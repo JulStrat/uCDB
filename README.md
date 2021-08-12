@@ -27,7 +27,7 @@ Simple, fast and portable CDB file format was developed by D. J. Bernstein.
 
 `examples` folder contains `airports.ino` Arduino IDE sketch and data files.
 
-<img src="https://github.com/JulStrat/uCDB/blob/master/examples/airports.png">
+<img src="https://github.com/JulStrat/uCDB/blob/master/examples/airports/airports.png">
 
 ## License
 
@@ -35,5 +35,5 @@ Simple, fast and portable CDB file format was developed by D. J. Bernstein.
 
 ## Links
 
-[CDB](https://cr.yp.to/cdb.html)
-[airports](https://ourairports.com/data/)
+- [CDB](https://cr.yp.to/cdb.html)
+- [airports](https://ourairports.com/data/)
