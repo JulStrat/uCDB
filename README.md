@@ -6,21 +6,21 @@ Simple, fast and portable CDB file format was developed by D. J. Bernstein.
 ## API
 
 ```C++
-    cdbResult open(const char fileName[], unsigned long (*userHashFunc)(const void *key, unsigned long keyLen) = DJBHash);
+cdbResult open(const char fileName[], unsigned long (*userHashFunc)(const void *key, unsigned long keyLen) = DJBHash);
 
-    cdbResult findKey(const void *key, unsigned long keyLen);
+cdbResult findKey(const void *key, unsigned long keyLen);
 
-    cdbResult findNextValue();
+cdbResult findNextValue();
 
-    int readValue();
+int readValue();
 
-    int readValue(void *buff, unsigned int byteNum);
+int readValue(void *buff, unsigned int byteNum);
 
-    void compareKeyExactly();
+void compareKeyExactly();
 
-    void compareHashOnly();
+void compareHashOnly();
 
-    cdbResult close();
+cdbResult close();
 ```    
 
 ## Usage example
