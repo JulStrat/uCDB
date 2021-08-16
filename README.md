@@ -25,7 +25,7 @@ cdbResult close();
 
 ## Usage example
 
-`examples` folder contains `airports.ino` Arduino IDE sketch and data files.
+`examples` folder contains `airports.ino` Arduino IDE sketch, Python converter `airports.py` script and data files.
 
 <img src="https://github.com/JulStrat/uCDB/blob/master/examples/airports/airports.png">
 
