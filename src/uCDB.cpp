@@ -20,7 +20,7 @@ uCDB::uCDB() {
 }
 
 cdbResult uCDB::open(const char fileName[], unsigned long (*userHashFunc)(const void *key, unsigned long keyLen)) {
-  unsigned long htPos, pos = 0;
+  unsigned long htPos;
   unsigned long htSlotsNum;
   byte buff[CDB_DESCRIPTOR_SIZE];
 
@@ -33,29 +33,43 @@ cdbResult uCDB::open(const char fileName[], unsigned long (*userHashFunc)(const 
   if (!cdb) {
     return (state = FILE_ERROR);
   }
+  
+  // CDB hash tables position and slots number integrity check
+  
   // CDB file size must be at least HEADER_SIZE bytes
   if (cdb.size() < CDB_HEADER_SIZE) {
     return (state = CDB_ERROR);
   }
 
   dataEndPos = cdb.size();
+  slotsNum = 0;
 
-  for (int i = 0; i < 256; i++) {
+  for (unsigned long pos = 0; pos < CDB_HEADER_SIZE; pos += CDB_DESCRIPTOR_SIZE) {
     if (!readDescriptor(buff, pos)) {
       return (state = FILE_ERROR);
     }
-    pos += 8;
+
     htPos = unpack(buff);
     htSlotsNum = unpack(buff + 4);
 
     if (!htPos) {
       continue; //< Empty hash table
     }
-    if ((htPos < CDB_HEADER_SIZE) || ((htPos + htSlotsNum * 8) > cdb.size())) {
+    if ((htPos < CDB_HEADER_SIZE) || (htPos > cdb.size())) {
       return (state = CDB_ERROR);
     }
+    if (((cdb.size() - htPos) >> 3) < htSlotsNum) {
+      return (state = CDB_ERROR);
+    }
+    
+    // Adjust data end position and total slots number
     if (htPos < dataEndPos) {
       dataEndPos = htPos;
+    }
+    slotsNum += htSlotsNum;
+
+    if (((cdb.size() - dataEndPos) >> 3) < slotsNum) {
+      return (state = CDB_ERROR);
     }
   }
   hashFunc = userHashFunc;

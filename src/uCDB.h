@@ -83,7 +83,7 @@ class uCDB
     unsigned long keyHash;
 
     unsigned long dataEndPos;
-    unsigned long recordsNum;
+    unsigned long slotsNum;
 
     //> Hash table descriptor (HEADER section)
     unsigned long hashTabStartPos;
