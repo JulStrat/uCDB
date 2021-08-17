@@ -12,7 +12,6 @@
 #include "Arduino.h"
 #include <SPI.h>
 #include <SD.h>
-#include "DJBHash.h"
 
 /** Key compare rule type */
 enum compareRule {
@@ -29,6 +28,8 @@ enum cdbResult {
   KEY_FOUND,
   KEY_NOT_FOUND
 };
+
+unsigned long DJBHash(const void *key, unsigned long keyLen);
 
 class uCDB
 {
@@ -107,7 +108,6 @@ class uCDB
     bool readDescriptor(byte buff[], unsigned long pos);
     cdbResult compareKey();
     unsigned long (*hashFunc)(const void *key, unsigned long keyLen);
-    static unsigned long unpack(const byte buff[]);
 };
 
 #endif

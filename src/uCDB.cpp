@@ -12,6 +12,8 @@
 #define CDB_HEADER_SIZE 256 * CDB_DESCRIPTOR_SIZE
 #define CDB_BUFF_SIZE 64
 
+static unsigned long unpack(const byte buff[]);
+
 uCDB::uCDB() {
   cmp = COMPARE_KEY_EXACTLY;
   state = CDB_CLOSED;
@@ -43,8 +45,8 @@ cdbResult uCDB::open(const char fileName[], unsigned long (*userHashFunc)(const 
       return (state = FILE_ERROR);
     }
     pos += 8;
-    htPos = uCDB::unpack(buff);
-    htSlotsNum = uCDB::unpack(buff + 4);
+    htPos = unpack(buff);
+    htSlotsNum = unpack(buff + 4);
 
     if (!htPos) {
       continue; //< Empty hash table
@@ -82,8 +84,8 @@ cdbResult uCDB::findKey(const void *key, unsigned long keyLen) {
     return (state = FILE_ERROR);
   }
 
-  hashTabStartPos = uCDB::unpack(buff);
-  hashTabSlotsNum = uCDB::unpack(buff + 4);
+  hashTabStartPos = unpack(buff);
+  hashTabSlotsNum = unpack(buff + 4);
   hashTabEndPos = hashTabStartPos + hashTabSlotsNum * CDB_DESCRIPTOR_SIZE;
   slotsToScan = hashTabSlotsNum;
   nextSlotPos = hashTabStartPos + ((keyHash >> 8) % hashTabSlotsNum) * 8;
@@ -116,8 +118,8 @@ cdbResult uCDB::findNextValue() {
       nextSlotPos = hashTabStartPos;
     }
 
-    slotHash = uCDB::unpack(buff);
-    dataPos = uCDB::unpack(buff + 4);
+    slotHash = unpack(buff);
+    dataPos = unpack(buff + 4);
 
     if (!dataPos) {
       slotsToScan = 0;
@@ -135,8 +137,8 @@ cdbResult uCDB::findNextValue() {
         return (state = FILE_ERROR);
       }
 
-      dataKeyLen = uCDB::unpack(buff);
-      dataValueLen	= uCDB::unpack(buff + 4);
+      dataKeyLen = unpack(buff);
+      dataValueLen = unpack(buff + 4);
       valueBytesAvail = dataValueLen;
 
       switch (cmp) {
@@ -251,7 +253,22 @@ bool uCDB::readDescriptor(byte buff[], unsigned long pos) {
   }
 }
 
-unsigned long uCDB::unpack(const byte buff[]) {
+unsigned long DJBHash(const void *key, unsigned long keyLen) {
+  unsigned long h = 5381;
+  const byte *curr = (const byte *)key;
+  const byte *end = curr + keyLen;
+
+  while (curr < end) {
+    h = ((h << 5) + h) ^ *curr;
+    ++curr;
+  }
+
+  return h;
+}
+
+// Static functions
+
+unsigned long unpack(const byte buff[]) {
   unsigned long v = buff[3];
 
   v = (v << 8) + buff[2];
