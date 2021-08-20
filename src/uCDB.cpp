@@ -72,6 +72,11 @@ cdbResult uCDB::open(const char fileName[], unsigned long (*userHashFunc)(const 
       return (state = CDB_ERROR);
     }
   }
+  // Check total
+  if ((cdb.size() - dataEndPos) != 8 * slotsNum){
+    return (state = CDB_ERROR);  
+  }
+  
   hashFunc = userHashFunc;
   return (state = CDB_OK);
 }
@@ -126,7 +131,8 @@ cdbResult uCDB::findNextValue() {
       return (state = FILE_ERROR);
     }
 
-    slotsToScan--;
+    // Adjust slotsToScan and next slot position
+    --slotsToScan;
     nextSlotPos += CDB_DESCRIPTOR_SIZE;
     if (nextSlotPos == hashTabEndPos) {
       nextSlotPos = hashTabStartPos;
@@ -142,7 +148,7 @@ cdbResult uCDB::findNextValue() {
     }
 
     // Check data position
-    if ((dataPos < CDB_HEADER_SIZE) || (dataPos > (dataEndPos - 8))) {
+    if ((dataPos < CDB_HEADER_SIZE) || (dataPos > (dataEndPos - CDB_DESCRIPTOR_SIZE))) {
       return (state = CDB_ERROR);
     }
 
@@ -153,15 +159,27 @@ cdbResult uCDB::findNextValue() {
 
       dataKeyLen = unpack(buff);
       dataValueLen = unpack(buff + 4);
+      
+      //> key, value length check
+      unsigned long t = dataPos + CDB_DESCRIPTOR_SIZE;
+      if ((dataEndPos - t) < dataKeyLen) {
+        return (state = CDB_ERROR);          
+      }
+      t += dataKeyLen;
+      if ((dataEndPos - t) < dataValueLen) {
+        return (state = CDB_ERROR);          
+      }
+      //< key, value length check
+      
       valueBytesAvail = dataValueLen;
 
       switch (cmp) {
         case COMPARE_HASH_ONLY:
-          if (!cdb.seek(dataPos + CDB_DESCRIPTOR_SIZE + dataKeyLen)) {
-            return (state = FILE_ERROR);
+          if (cdb.seek(dataPos + CDB_DESCRIPTOR_SIZE + dataKeyLen)) {
+            return (state = KEY_FOUND);              
           }
           else {
-            return (state = KEY_FOUND);
+            return (state = FILE_ERROR);
           }
 
         default:
@@ -182,16 +200,17 @@ cdbResult uCDB::findNextValue() {
 }
 
 int uCDB::readValue() {
-  if (state != KEY_FOUND) {
-    return -1;
+  int rt;
+  
+  if ((state == KEY_FOUND) && valueBytesAvail) {
+    rt = cdb.read();
+    if (rt != -1) {
+      --valueBytesAvail;
+    }
+    return rt;
   }
 
-  if (valueBytesAvail--) {
-    return cdb.read();
-  }
-  else {
-    return -1;
-  }
+  return -1;
 }
 
 int uCDB::readValue(void *buff, unsigned int byteNum) {
