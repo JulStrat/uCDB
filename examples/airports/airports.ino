@@ -71,8 +71,6 @@ void setup() {
   SD.begin(10);
 
   if (ucdb.open(fileName) == CDB_OK) {
-    // ucdb.compareHashOnly();
-
     // Find some existing codes.
     for (unsigned int i = 0; i < sizeof (air) / sizeof (const char *); i++) {
       query(air[i], strlen(air[i]));

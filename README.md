@@ -16,10 +16,6 @@ int readValue();
 
 int readValue(void *buff, unsigned int byteNum);
 
-void compareKeyExactly();
-
-void compareHashOnly();
-
 cdbResult close();
 ```    
 

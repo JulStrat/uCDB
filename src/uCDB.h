@@ -13,12 +13,6 @@
 #include <SPI.h>
 #include <SD.h>
 
-/** Key compare rule type */
-enum compareRule {
-  COMPARE_KEY_EXACTLY = 0, //< Match key exactly (key hash, key length, key)
-  COMPARE_HASH_ONLY        //< Match only key hash (key hash)
-};
-
 enum cdbResult {
   CDB_OK = 0,
   CDB_CLOSED, // Initial state
@@ -65,9 +59,6 @@ class uCDB
     */
     int readValue(void *buff, unsigned int byteNum);
 
-    void compareKeyExactly();
-    void compareHashOnly();
-
     /**
         Close CDB
     */
@@ -76,7 +67,6 @@ class uCDB
   private:
     File cdb;
     cdbResult state;
-    compareRule cmp;
 
     const byte *key_;
     unsigned long keyLen_;

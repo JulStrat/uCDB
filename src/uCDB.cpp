@@ -15,7 +15,6 @@
 static unsigned long unpack(const byte buff[]);
 
 uCDB::uCDB() {
-  cmp = COMPARE_KEY_EXACTLY;
   state = CDB_CLOSED;
 }
 
@@ -173,22 +172,8 @@ cdbResult uCDB::findNextValue() {
       
       valueBytesAvail = dataValueLen;
 
-      switch (cmp) {
-        case COMPARE_HASH_ONLY:
-          if (cdb.seek(dataPos + CDB_DESCRIPTOR_SIZE + dataKeyLen)) {
-            return (state = KEY_FOUND);              
-          }
-          else {
-            return (state = FILE_ERROR);
-          }
-
-        default:
-          if (keyLen_ != dataKeyLen) {
-            break; // Scan next slot
-          }
-          if (compareKey() == KEY_FOUND) {
-            return (state = KEY_FOUND);
-          }
+      if ((keyLen_ == dataKeyLen) & (compareKey() == KEY_FOUND)) {
+        return (state = KEY_FOUND);          
       }
     }
   }
@@ -224,14 +209,6 @@ int uCDB::readValue(void *buff, unsigned int byteNum) {
   valueBytesAvail -= byteNum;
 
   return cdb.read(buff, byteNum);
-}
-
-void uCDB::compareKeyExactly() {
-  cmp = COMPARE_KEY_EXACTLY;
-}
-
-void uCDB::compareHashOnly() {
-  cmp = COMPARE_HASH_ONLY;
 }
 
 cdbResult uCDB::close() {

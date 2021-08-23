@@ -1,4 +1,4 @@
-name: Aarduino-lint
+name: arduino-lint
 on: [push, pull_request]
 jobs:
   lint:
@@ -7,4 +7,6 @@ jobs:
       - uses: actions/checkout@v2
       - uses: arduino/arduino-lint-action@v1
         with:
-          library-manager: update      
+          library-manager: update
+          compliance: strict
+
