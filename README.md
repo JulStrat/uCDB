@@ -1,3 +1,6 @@
+[![arduino-lint](https://github.com/JulStrat/uCDB/actions/workflows/arduino-lint.yml/badge.svg)](https://github.com/JulStrat/uCDB/actions/workflows/arduino-lint.yml)
+[![GitHub license](https://img.shields.io/github/license/JulStrat/uCDB)](https://github.com/JulStrat/uCDB/blob/master/LICENSE.md)
+
 # uCDB
 
 Arduino library for querying [Constant DataBase](https://en.wikipedia.org/wiki/Cdb_(software)) (key, value) store.

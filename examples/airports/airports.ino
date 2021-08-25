@@ -40,23 +40,31 @@ void printValue() {
 }
 
 void query(const void *key, unsigned long keyLen) {
+  cdbResult rt;
+  
   Serial.println();
   Serial.print("Query millisec: ");
   startMillis = millis();
-  if (ucdb.findKey(key, keyLen) == KEY_FOUND) {
-    Serial.println(millis() - startMillis);
-    Serial.print("Airport found: ");
-    printKey(key, keyLen);
-    Serial.println();
-    printValue();
-    Serial.println();
+  rt = ucdb.findKey(key, keyLen);
+  Serial.println(millis() - startMillis);
+  switch (rt) {
+    case KEY_FOUND:
+      Serial.print("Airport found: ");
+      printKey(key, keyLen);
+      Serial.println();
+      printValue();
+      break;
+    
+    case KEY_NOT_FOUND:
+      Serial.print("Airport not found: ");
+      printKey(key, keyLen);
+      break;
+      
+    default:
+      Serial.println("ERROR");
+      break;
   }
-  else {
-    Serial.println(millis() - startMillis);
-    Serial.print("Airport not found: ");
-    printKey(key, keyLen);
-    Serial.println();
-  }
+  Serial.println();  
 }
 
 void setup() {

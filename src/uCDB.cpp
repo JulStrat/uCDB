@@ -2,8 +2,9 @@
    @file uCDB.cpp
    uCDB implementation
 
-   Created by Ioulianos Kakoulidis, 2021.
-   Released into the public domain.   
+   @author    Ioulianos Kakoulidis
+   @date      2021   
+   @copyright Public Domain
 */
 
 #include "uCDB.h"
@@ -12,18 +13,18 @@
 #define CDB_HEADER_SIZE 256 * CDB_DESCRIPTOR_SIZE
 #define CDB_BUFF_SIZE 64
 
-static unsigned long unpack(const byte buff[]);
+static unsigned long unpack(const byte *buff);
 
 uCDB::uCDB() {
   state = CDB_CLOSED;
 }
 
-cdbResult uCDB::open(const char fileName[], unsigned long (*userHashFunc)(const void *key, unsigned long keyLen)) {
+cdbResult uCDB::open(const char *fileName, unsigned long (*userHashFunc)(const void *key, unsigned long keyLen)) {
   unsigned long htPos;
   unsigned long htSlotsNum;
   byte buff[CDB_DESCRIPTOR_SIZE];
 
-  cdb.close(); //< Close previously opened CDB file
+  cdb.close(); // Close previously opened CDB file
 
   if (!SD.exists(fileName)) {
     return (state = CDB_NOT_FOUND);
@@ -52,7 +53,7 @@ cdbResult uCDB::open(const char fileName[], unsigned long (*userHashFunc)(const 
     htSlotsNum = unpack(buff + 4);
 
     if (!htPos) {
-      continue; //< Empty hash table
+      continue; // Empty hash table
     }
     if ((htPos < CDB_HEADER_SIZE) || (htPos > cdb.size())) {
       return (state = CDB_ERROR);
@@ -95,7 +96,7 @@ cdbResult uCDB::findKey(const void *key, unsigned long keyLen) {
   }
 
   keyHash = hashFunc(key, keyLen);
-  key_ = (const byte *)key;
+  key_ = static_cast<const byte *>(key);
   keyLen_ = keyLen;
 
   if (!readDescriptor(buff, (keyHash & 255) << 3)) {
@@ -248,7 +249,7 @@ cdbResult uCDB::compareKey() {
   return KEY_FOUND;
 }
 
-bool uCDB::readDescriptor(byte buff[], unsigned long pos) {
+bool uCDB::readDescriptor(byte *buff, unsigned long pos) {
   if (cdb.position() != pos) {
     if (!cdb.seek(pos)) {
       return false;
@@ -265,7 +266,7 @@ bool uCDB::readDescriptor(byte buff[], unsigned long pos) {
 
 unsigned long DJBHash(const void *key, unsigned long keyLen) {
   unsigned long h = 5381;
-  const byte *curr = (const byte *)key;
+  const byte *curr = static_cast<const byte *>(key);
   const byte *end = curr + keyLen;
 
   while (curr < end) {
@@ -278,7 +279,7 @@ unsigned long DJBHash(const void *key, unsigned long keyLen) {
 
 // Static functions
 
-unsigned long unpack(const byte buff[]) {
+unsigned long unpack(const byte *buff) {
   unsigned long v = buff[3];
 
   v = (v << 8) + buff[2];
