@@ -173,7 +173,7 @@ cdbResult uCDB::findNextValue() {
       
       valueBytesAvail = dataValueLen;
 
-      if ((keyLen_ == dataKeyLen) & (compareKey() == KEY_FOUND)) {
+      if ((keyLen_ == dataKeyLen) && (compareKey() == KEY_FOUND)) {
         return (state = KEY_FOUND);          
       }
     }
