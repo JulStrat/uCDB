@@ -31,7 +31,7 @@ cdbResult uCDB::open(const char *fileName, unsigned long (*userHashFunc)(const v
   }
   cdb = SD.open(fileName, FILE_READ);
   if (!cdb) {
-    return (state = FILE_ERROR);
+    return (state = CDB_CLOSED);
   }
   
   // CDB hash tables position and slots number integrity check
@@ -46,7 +46,7 @@ cdbResult uCDB::open(const char *fileName, unsigned long (*userHashFunc)(const v
 
   for (unsigned long pos = 0; pos < CDB_HEADER_SIZE; pos += CDB_DESCRIPTOR_SIZE) {
     if (!readDescriptor(buff, pos)) {
-      return (state = FILE_ERROR);
+      return (state = CDB_ERROR); // File read error is critical here.
     }
 
     htPos = unpack(buff);
