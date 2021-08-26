@@ -18,7 +18,7 @@ enum cdbResult {
   CDB_OK = 0,
   CDB_CLOSED, ///< Initial state
   CDB_NOT_FOUND,
-  CDB_ERROR,  ///< CDB data integrity error
+  CDB_ERROR,  ///< CDB data integrity critical error
   FILE_ERROR, ///< File operation (open/seek/read) error
   KEY_FOUND,
   KEY_NOT_FOUND
@@ -103,6 +103,7 @@ class uCDB
     bool readDescriptor(byte *buff, unsigned long pos);
     cdbResult compareKey();
     unsigned long (*hashFunc)(const void *key, unsigned long keyLen);
+    void zero();
 };
 
 #endif

@@ -16,6 +16,7 @@
 static unsigned long unpack(const byte *buff);
 
 uCDB::uCDB() {
+  zero();  
   state = CDB_CLOSED;
 }
 
@@ -23,7 +24,8 @@ cdbResult uCDB::open(const char *fileName, unsigned long (*userHashFunc)(const v
   unsigned long htPos;
   unsigned long htSlotsNum;
   byte buff[CDB_DESCRIPTOR_SIZE];
-
+  
+  zero();
   cdb.close(); // Close previously opened CDB file
 
   if (!SD.exists(fileName)) {
@@ -56,10 +58,10 @@ cdbResult uCDB::open(const char *fileName, unsigned long (*userHashFunc)(const v
       continue; // Empty hash table
     }
     if ((htPos < CDB_HEADER_SIZE) || (htPos > cdb.size())) {
-      return (state = CDB_ERROR);
+      return (state = CDB_ERROR); // Critical CDB format or data integrity error          
     }
     if (((cdb.size() - htPos) >> 3) < htSlotsNum) {
-      return (state = CDB_ERROR);
+      return (state = CDB_ERROR); // Critical CDB format or data integrity error          
     }
     
     // Adjust data end position and total slots number
@@ -69,12 +71,12 @@ cdbResult uCDB::open(const char *fileName, unsigned long (*userHashFunc)(const v
     slotsNum += htSlotsNum;
 
     if (((cdb.size() - dataEndPos) >> 3) < slotsNum) {
-      return (state = CDB_ERROR);
+      return (state = CDB_ERROR); // Critical CDB format or data integrity error          
     }
   }
   // Check total
   if ((cdb.size() - dataEndPos) != 8 * slotsNum){
-    return (state = CDB_ERROR);  
+    return (state = CDB_ERROR); // Critical CDB format or data integrity error           
   }
   
   hashFunc = userHashFunc;
@@ -84,11 +86,11 @@ cdbResult uCDB::open(const char *fileName, unsigned long (*userHashFunc)(const v
 cdbResult uCDB::findKey(const void *key, unsigned long keyLen) {
   byte buff[CDB_DESCRIPTOR_SIZE];
 
+  zero();
   // Check CDB state
   switch (state) {
     case CDB_CLOSED:
     case CDB_NOT_FOUND:
-    case FILE_ERROR:
     case CDB_ERROR:
       return state;
     default:
@@ -114,12 +116,12 @@ cdbResult uCDB::findKey(const void *key, unsigned long keyLen) {
 
 cdbResult uCDB::findNextValue() {
   byte buff[CDB_BUFF_SIZE];
+  bool rd;
 
   // Check CDB state
   switch (state) {
     case CDB_CLOSED:
     case CDB_NOT_FOUND:
-    case FILE_ERROR:
     case CDB_ERROR:
       return state;
     default:
@@ -127,29 +129,29 @@ cdbResult uCDB::findNextValue() {
   }
 
   while (slotsToScan) {
-    if (!readDescriptor(buff, nextSlotPos)) {
-      return (state = FILE_ERROR);
-    }
-
+    rd = readDescriptor(buff, nextSlotPos);  
     // Adjust slotsToScan and next slot position
     --slotsToScan;
     nextSlotPos += CDB_DESCRIPTOR_SIZE;
     if (nextSlotPos == hashTabEndPos) {
       nextSlotPos = hashTabStartPos;
     }
+    
+    if (!rd) {
+      return (state = FILE_ERROR);
+    }
 
     slotHash = unpack(buff);
     dataPos = unpack(buff + 4);
 
     if (!dataPos) {
-      slotsToScan = 0;
-      nextSlotPos = 0;
+      zero();
       return (state = KEY_NOT_FOUND);
     }
 
     // Check data position
     if ((dataPos < CDB_HEADER_SIZE) || (dataPos > (dataEndPos - CDB_DESCRIPTOR_SIZE))) {
-      return (state = CDB_ERROR);
+      return (state = CDB_ERROR); // Critical CDB format or data integrity error          
     }
 
     if (slotHash == keyHash) {
@@ -163,24 +165,29 @@ cdbResult uCDB::findNextValue() {
       //> key, value length check
       unsigned long t = dataPos + CDB_DESCRIPTOR_SIZE;
       if ((dataEndPos - t) < dataKeyLen) {
-        return (state = CDB_ERROR);          
+        return (state = CDB_ERROR); // Critical CDB format or data integrity error          
       }
       t += dataKeyLen;
       if ((dataEndPos - t) < dataValueLen) {
-        return (state = CDB_ERROR);          
+        return (state = CDB_ERROR); // Critical CDB format or data integrity error          
       }
       //< key, value length check
-      
-      valueBytesAvail = dataValueLen;
 
-      if ((keyLen_ == dataKeyLen) && (compareKey() == KEY_FOUND)) {
-        return (state = KEY_FOUND);          
+      if (keyLen_ == dataKeyLen) {
+        switch (compareKey()) {
+          case KEY_FOUND:
+            valueBytesAvail = dataValueLen;          
+            return (state = KEY_FOUND);             
+          case FILE_ERROR:
+            return (state = FILE_ERROR);             
+          default:
+            ;          
+        }
       }
     }
   }
 
-  slotsToScan = 0;
-  nextSlotPos = 0;
+  zero(); // ?
 
   return (state = KEY_NOT_FOUND);
 }
@@ -213,6 +220,7 @@ int uCDB::readValue(void *buff, unsigned int byteNum) {
 }
 
 cdbResult uCDB::close() {
+  zero();  
   cdb.close();
   return (state = CDB_CLOSED);
 }
@@ -264,6 +272,11 @@ bool uCDB::readDescriptor(byte *buff, unsigned long pos) {
   }
 }
 
+void uCDB::zero() {
+  slotsToScan = 0;
+  nextSlotPos = 0;
+}
+ 
 unsigned long DJBHash(const void *key, unsigned long keyLen) {
   unsigned long h = 5381;
   const byte *curr = static_cast<const byte *>(key);
