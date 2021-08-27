@@ -193,10 +193,8 @@ cdbResult uCDB::findNextValue() {
 }
 
 int uCDB::readValue() {
-  int rt;
-  
   if ((state == KEY_FOUND) && valueBytesAvail) {
-    rt = cdb.read();
+    int rt = cdb.read();
     if (rt != -1) {
       --valueBytesAvail;
     }
@@ -207,13 +205,11 @@ int uCDB::readValue() {
 }
 
 int uCDB::readValue(void *buff, unsigned int byteNum) {
-  int br;
-
   if (state == KEY_FOUND) {
     if (byteNum > valueBytesAvail) {
       byteNum = valueBytesAvail;
     }
-    br = cdb.read(buff, byteNum);
+    int br = cdb.read(buff, byteNum);
     if (br > 0) {
       valueBytesAvail -= br;  
     }
@@ -249,8 +245,7 @@ cdbResult uCDB::compareKey() {
 
   // keyLen < CDB_BUFF_SIZE
   if (keyLen) {
-    // Compiler warning: comparison between signed and unsigned integer expressions [-Wsign-compare]
-    if (cdb.read(buff, keyLen) != keyLen) {
+    if (cdb.read(buff, keyLen) != (int)keyLen) {
       return FILE_ERROR;
     }
     if (memcmp(key, buff, keyLen)) {
@@ -268,21 +263,17 @@ bool uCDB::readDescriptor(byte *buff, unsigned long pos) {
     }
   }
 
-  if (cdb.read(buff, CDB_DESCRIPTOR_SIZE) == CDB_DESCRIPTOR_SIZE) {
-    return true;
-  }
-  else {
-    return false;
-  }
+  return (cdb.read(buff, CDB_DESCRIPTOR_SIZE) == CDB_DESCRIPTOR_SIZE);
 }
 
 void uCDB::zero() {
   slotsToScan = 0;
   nextSlotPos = 0;
 }
- 
+
+#define DJB_START_HASH 5381UL  
 unsigned long DJBHash(const void *key, unsigned long keyLen) {
-  unsigned long h = 5381;
+  unsigned long h = DJB_START_HASH;
   const byte *curr = static_cast<const byte *>(key);
   const byte *end = curr + keyLen;
 
@@ -293,6 +284,7 @@ unsigned long DJBHash(const void *key, unsigned long keyLen) {
 
   return h;
 }
+#undef DJB_START_HASH
 
 // Static functions
 
