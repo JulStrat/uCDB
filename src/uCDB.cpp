@@ -207,16 +207,20 @@ int uCDB::readValue() {
 }
 
 int uCDB::readValue(void *buff, unsigned int byteNum) {
-  if (state != KEY_FOUND) {
-    return -1;
+  int br;
+
+  if (state == KEY_FOUND) {
+    if (byteNum > valueBytesAvail) {
+      byteNum = valueBytesAvail;
+    }
+    br = cdb.read(buff, byteNum);
+    if (br > 0) {
+      valueBytesAvail -= br;  
+    }
+    return br;
   }
 
-  if (byteNum > valueBytesAvail) {
-    byteNum = valueBytesAvail;
-  }
-  valueBytesAvail -= byteNum;
-
-  return cdb.read(buff, byteNum);
+  return -1;
 }
 
 cdbResult uCDB::close() {

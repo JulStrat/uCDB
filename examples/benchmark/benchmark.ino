@@ -35,6 +35,7 @@ void loop() {
   long key;
   unsigned long startMillis;  
   cdbResult rt;
+  int br;
 
   Serial.println("Press any key to start test");
   while (!Serial.available()) {
@@ -47,7 +48,7 @@ void loop() {
     return;
   }
 
-  Serial.println("Querying 1000 random keys from interval [0..5000000)...");
+  Serial.println("Querying 1000 random keys from interval [0, 5000000)...");
   startMillis = millis();
   for (int i = 0; i < 1000; ++i) {
     key = random(5000000);
@@ -71,7 +72,7 @@ void loop() {
   Serial.print("Query millis: ");
   Serial.println(millis() - startMillis);
 
-  Serial.println("Querying 1000 random keys from interval [-5000000,0)...");
+  Serial.println("Querying 1000 random keys from interval [-5000000, 0)...");
   startMillis = millis();
   for (int i = 0; i < 1000; ++i) {
     key = random(-5000000, 0);
@@ -86,7 +87,7 @@ void loop() {
   Serial.print("Query millis: ");
   Serial.println(millis() - startMillis);
   
-  Serial.println("Querying 1000 random keys with findNextValue() from interval [0..5000000)...");
+  Serial.println("Querying 1000 random keys with findNextValue() from interval [0, 5000000)...");
   startMillis = millis();
   for (int i = 0; i < 1000; ++i) {
     key = random(5000000);
@@ -116,7 +117,7 @@ void loop() {
   Serial.print("Query millis: ");
   Serial.println(millis() - startMillis);
   
-  Serial.println("Querying 1000 random keys with findNextValue() from interval [-5000000,0)...");
+  Serial.println("Querying 1000 random keys with findNextValue() from interval [-5000000, 0)...");
   startMillis = millis();
   for (int i = 0; i < 1000; ++i) {
     key = random(-5000000, 0);
@@ -137,6 +138,24 @@ void loop() {
   Serial.print("Query millis: ");
   Serial.println(millis() - startMillis);
 
+  Serial.println("readValue() test...");
+  for (int i = 0; i < 100; ++i) {
+    sprintf(str, "%ld", (long)5*i);
+    rt = ucdb.findKey(str, strlen(str));
+
+    if (rt == KEY_FOUND) {
+      br = ucdb.readValue(str, 15);
+      if (br >= 0) {
+        str[br] = '\0';
+        Serial.println(str);
+      }
+    }
+    else {
+      Serial.print("Error: ");
+      Serial.println(5*i);
+      break;
+    }
+  }
 
   ucdb.close();
   while (Serial.available()) {

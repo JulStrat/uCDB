@@ -22,11 +22,15 @@ int readValue(void *buff, unsigned int byteNum);
 cdbResult close();
 ```    
 
-## Usage example
+## Usage examples
 
 `examples` folder contains `airports.ino` Arduino IDE sketch, Python converter `airports.py` script and data files.
 
 <img src="https://github.com/JulStrat/uCDB/blob/master/examples/airports/airports.png">
+
+`benchmark` sketch.
+
+<img src="https://github.com/JulStrat/uCDB/blob/master/examples/benchmark/benchmark.png">
 
 ## License
 
