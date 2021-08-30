@@ -23,6 +23,10 @@ uCDB::uCDB() {
 cdbResult uCDB::open(const char *fileName, unsigned long (*userHashFunc)(const void *key, unsigned long keyLen)) {
   unsigned long htPos;
   unsigned long htSlotsNum;
+
+  unsigned long dend;
+  unsigned long snum;
+  
   byte buff[CDB_DESCRIPTOR_SIZE];
   
   zero();
@@ -43,8 +47,8 @@ cdbResult uCDB::open(const char *fileName, unsigned long (*userHashFunc)(const v
     return (state = CDB_ERROR);
   }
 
-  dataEndPos = cdb.size();
-  slotsNum = 0;
+  dend = cdb.size();
+  snum = 0;
 
   for (unsigned long pos = 0; pos < CDB_HEADER_SIZE; pos += CDB_DESCRIPTOR_SIZE) {
     if (!readDescriptor(buff, pos)) {
@@ -65,20 +69,22 @@ cdbResult uCDB::open(const char *fileName, unsigned long (*userHashFunc)(const v
     }
     
     // Adjust data end position and total slots number
-    if (htPos < dataEndPos) {
-      dataEndPos = htPos;
+    if (htPos < dend) {
+      dend = htPos;
     }
-    slotsNum += htSlotsNum;
+    snum += htSlotsNum;
 
-    if (((cdb.size() - dataEndPos) >> 3) < slotsNum) {
+    if (((cdb.size() - dend) >> 3) < snum) {
       return (state = CDB_ERROR); // Critical CDB format or data integrity error          
     }
   }
   // Check total
-  if ((cdb.size() - dataEndPos) != 8 * slotsNum){
+  if ((cdb.size() - dend) != 8 * snum){
     return (state = CDB_ERROR); // Critical CDB format or data integrity error           
   }
   
+  dataEndPos = dend;
+  slotsNum = snum;
   hashFunc = userHashFunc;
   return (state = CDB_OK);
 }
@@ -219,6 +225,14 @@ int uCDB::readValue(void *buff, unsigned int byteNum) {
   return -1;
 }
 
+unsigned long uCDB::recordsNumber() {
+  return (slotsNum >> 1);  
+}
+
+unsigned long uCDB::valueAvailable() {
+  return ((state == KEY_FOUND) ? valueBytesAvail : 0);
+}
+
 cdbResult uCDB::close() {
   zero();  
   cdb.close();
@@ -267,6 +281,9 @@ bool uCDB::readDescriptor(byte *buff, unsigned long pos) {
 }
 
 void uCDB::zero() {
+  dataEndPos = 0;
+  slotsNum = 0;
+    
   slotsToScan = 0;
   nextSlotPos = 0;
 }

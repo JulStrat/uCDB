@@ -59,6 +59,16 @@ class uCDB
         after successful finKey() or findNextValue() call
     */
     int readValue(void *buff, unsigned int byteNum);
+    
+    /**
+        Total records number in CDB
+    */
+    unsigned long recordsNumber();
+
+    /**
+        The number of `value' bytes available for reading
+    */
+    unsigned long valueAvailable();
 
     /**
         Close CDB
@@ -73,8 +83,8 @@ class uCDB
     unsigned long keyLen_;
     unsigned long keyHash;
 
-    unsigned long dataEndPos;
-    unsigned long slotsNum;
+    unsigned long dataEndPos; ///< Data end position
+    unsigned long slotsNum;   ///< Total slots number in CDB.
 
     /// @name Hash table descriptor (HEADER section)
     /// @{

@@ -48,6 +48,9 @@ void loop() {
     return;
   }
 
+  Serial.print("Total records number: ");
+  Serial.println(ucdb.recordsNumber());
+
   Serial.println("Querying 1000 random keys from interval [0, 5000000)...");
   startMillis = millis();
   for (int i = 0; i < 1000; ++i) {
@@ -144,6 +147,8 @@ void loop() {
     rt = ucdb.findKey(str, strlen(str));
 
     if (rt == KEY_FOUND) {
+      Serial.print("Value length in bytes: ");
+      Serial.println(ucdb.valueAvailable());
       br = ucdb.readValue(str, 15);
       if (br >= 0) {
         str[br] = '\0';

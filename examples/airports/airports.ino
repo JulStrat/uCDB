@@ -69,7 +69,7 @@ void query(const void *key, unsigned long keyLen) {
 
 void setup() {
   const char fileName[] = "airports.cdb";
-  const char *air[] = {"SBGL", "00AR", "PG-TFI", "US-0480"};
+  const char *air[] = {"SBGL", "00AR", "PG-TFI", "US-0480", "ZYGH"};
 
   Serial.begin(9600);
   while (!Serial) {
@@ -79,6 +79,8 @@ void setup() {
   SD.begin(10);
 
   if (ucdb.open(fileName) == CDB_OK) {
+    Serial.print("Total records number: ");
+    Serial.println(ucdb.recordsNumber());
     // Find some existing codes.
     for (unsigned int i = 0; i < sizeof (air) / sizeof (const char *); i++) {
       query(air[i], strlen(air[i]));

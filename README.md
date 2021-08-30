@@ -19,6 +19,10 @@ int readValue();
 
 int readValue(void *buff, unsigned int byteNum);
 
+unsigned long recordsNumber();
+
+unsigned long valueAvailable();
+
 cdbResult close();
 ```    
 
