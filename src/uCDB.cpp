@@ -30,7 +30,9 @@ cdbResult uCDB::open(const char *fileName, unsigned long (*userHashFunc)(const v
   byte buff[CDB_DESCRIPTOR_SIZE];
   
   zero();
-  cdb.close(); // Close previously opened CDB file
+  if (cdb) {
+    cdb.close(); // Close previously opened CDB file
+  }
 
   if (!SD.exists(fileName)) {
     return (state = CDB_NOT_FOUND);
@@ -235,7 +237,9 @@ unsigned long uCDB::valueAvailable() {
 
 cdbResult uCDB::close() {
   zero();  
-  cdb.close();
+  if (cdb) {
+    cdb.close();
+  }
   return (state = CDB_CLOSED);
 }
 
