@@ -21,9 +21,11 @@
   Created by Ioulianos Kakoulidis, 2021.
   Released into the public domain.     
 */
-#include "uCDB.h"
+#include <SPI.h>
+#include <SD.h>
+#include "uCDB.hpp"
 
-uCDB ucdb;
+uCDB<SDClass, File> ucdb(SD);
 
 unsigned long startMillis;
 
@@ -76,7 +78,15 @@ void setup() {
     ;
   }
   
-  SD.begin(10);
+  if (SD.begin(10)) {
+    Serial.println("SPI OK.");
+  }
+  else {
+    Serial.println("SPI error.");
+    while (true) {
+      ;
+    }
+  }
 
   if (ucdb.open(fileName) == CDB_OK) {
     Serial.print("Total records number: ");

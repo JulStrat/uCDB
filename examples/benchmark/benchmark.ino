@@ -13,7 +13,12 @@
   Released into the public domain.     
 */
 
-#include "uCDB.h"
+#include "SdFat.h"
+#include "uCDB.hpp"
+
+SdFat fat;
+uCDB<SdFat, File> ucdb(fat);
+
 
 void setup() {
   Serial.begin(9600);
@@ -21,7 +26,7 @@ void setup() {
     ;
   }
   
-  if (!SD.begin(10)) {
+  if (!fat.begin(10)) {
     Serial.println("SD card initialization failed!");
     while (true) {
       ;
@@ -30,7 +35,7 @@ void setup() {
 }
 
 void loop() {
-  uCDB ucdb;  
+  
   char str[16];
   long key;
   unsigned long startMillis;  
