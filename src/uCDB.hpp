@@ -71,7 +71,7 @@ class uCDB
 
   private:
     TFileSystem& fs_;
-    File cdb;
+    TFile cdb;
     cdbResult state;
 
     const byte *key_;
@@ -389,7 +389,8 @@ cdbResult uCDB<TFileSystem, TFile>::compareKey() {
 template <class TFileSystem, class TFile>
 bool uCDB<TFileSystem, TFile>::readDescriptor(byte *buff, unsigned long pos) {
   if (cdb.position() != pos) {
-    if (!cdb.seek(pos)) {
+    cdb.seek(pos);  
+    if (pos != cdb.position()) {
       return false;
     }
   }

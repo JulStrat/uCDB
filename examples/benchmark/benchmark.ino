@@ -13,11 +13,23 @@
   Released into the public domain.     
 */
 
+//#define USE_SERIALFLASH_LIB
+#ifdef USE_SERIALFLASH_LIB
+#include <SerialFlash.h>
+#include <SPI.h>
+#define fat SerialFlash
+#else
 #include "SdFat.h"
+#endif
 #include "uCDB.hpp"
 
+#ifdef USE_SERIALFLASH_LIB
+uCDB<SerialFlashChip, SerialFlashFile> ucdb(SerialFlash);
+#else
 SdFat fat;
 uCDB<SdFat, File> ucdb(fat);
+#endif
+
 
 
 void setup() {
