@@ -57,17 +57,22 @@ class uCDB
     /**
         Total records number in CDB
     */
-    unsigned long recordsNumber();
+    unsigned long recordsNumber() const;
 
     /**
         The number of `value' bytes available for reading
     */
-    unsigned long valueAvailable();
+    unsigned long valueAvailable() const;
 
     /**
         Close CDB
     */
     cdbResult close();
+    
+    /**
+        uCDB destructor
+    */
+    ~uCDB();    
 
   private:
     TFileSystem& fs_;
@@ -232,7 +237,6 @@ cdbResult uCDB<TFileSystem, TFile>::findKey(const void *key, unsigned long keyLe
 template <class TFileSystem, class TFile>
 cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
   byte buff[CDB_BUFF_SIZE];
-  bool rd;
 
   // Check CDB state
   switch (state) {
@@ -245,7 +249,7 @@ cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
   }
 
   while (slotsToScan) {
-    rd = readDescriptor(buff, nextSlotPos);
+    bool rd = readDescriptor(buff, nextSlotPos);
     // Adjust slotsToScan and next slot position
     --slotsToScan;
     nextSlotPos += CDB_DESCRIPTOR_SIZE;
@@ -338,7 +342,7 @@ int uCDB<TFileSystem, TFile>::readValue(void *buff, unsigned int byteNum) {
 }
 
 template <class TFileSystem, class TFile>
-unsigned long uCDB<TFileSystem, TFile>::recordsNumber() {
+unsigned long uCDB<TFileSystem, TFile>::recordsNumber() const {
   // Check CDB state
   switch (state) {
     case CDB_CLOSED:
@@ -351,7 +355,7 @@ unsigned long uCDB<TFileSystem, TFile>::recordsNumber() {
 }
 
 template <class TFileSystem, class TFile>
-unsigned long uCDB<TFileSystem, TFile>::valueAvailable() {
+unsigned long uCDB<TFileSystem, TFile>::valueAvailable() const {
   return ((state == KEY_FOUND) ? valueBytesAvail : 0);
 }
 
@@ -362,6 +366,11 @@ cdbResult uCDB<TFileSystem, TFile>::close() {
     cdb.close();
   }
   return (state = CDB_CLOSED);
+}
+
+template <class TFileSystem, class TFile>
+uCDB<TFileSystem, TFile>::~uCDB() {
+  close();    
 }
 
 // Private functions
@@ -399,7 +408,7 @@ template <class TFileSystem, class TFile>
 bool uCDB<TFileSystem, TFile>::readDescriptor(byte *buff, unsigned long pos) {
   if (cdb.position() != pos) {
     cdb.seek(pos);
-    if (pos != cdb.position()) {
+    if (cdb.position() != pos) {
       return false;
     }
   }
