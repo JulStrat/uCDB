@@ -4,12 +4,18 @@
 # uCDB
 
 Arduino library for querying [Constant DataBase](https://en.wikipedia.org/wiki/Cdb_(software)) (key, value) store.
-Simple, fast and portable CDB file format was developed by D. J. Bernstein.
+Simple, :cyclone: fast and portable CDB file format was developed by D. J. Bernstein.
+
+Compatible storage libraries:
+- official [Arduino SD](https://github.com/arduino-libraries/SD)
+- [Greiman SdFat](https://github.com/greiman/SdFat)
+- [SdFat - Adafruit fork](https://github.com/adafruit/SdFat)
+- [Adafruit SPIFlash](https://github.com/adafruit/Adafruit_SPIFlash)
 
 ## API
 
 ```C++
-cdbResult open(const char fileName[], unsigned long (*userHashFunc)(const void *key, unsigned long keyLen) = DJBHash);
+cdbResult open(const char *fileName, unsigned long (*userHashFunc)(const void *key, unsigned long keyLen) = DJBHash);
 
 cdbResult findKey(const void *key, unsigned long keyLen);
 
