@@ -32,6 +32,10 @@ unsigned long valueAvailable();
 cdbResult close();
 ```    
 
+States transitions
+
+<img src="https://github.com/JulStrat/uCDB/blob/master/docs/uCDB_state.png>
+
 ## Usage examples
 
 `examples` folder contains `airports.ino` Arduino IDE sketch, Python converter `airports.py` script and data files.

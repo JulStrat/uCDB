@@ -7,10 +7,11 @@
    @copyright Public Domain
 */
 
+/// uCDB result codes and states
 enum cdbResult {
   CDB_OK = 0,
   CDB_CLOSED, ///< Initial state
-  CDB_NOT_FOUND,
+  CDB_NOT_FOUND, ///< open() result
   CDB_ERROR,  ///< CDB data integrity critical error
   FILE_ERROR, ///< File operation (open/seek/read) error
   KEY_FOUND,
@@ -116,7 +117,6 @@ class uCDB
     void zero();
 };
 
-
 #define CDB_DESCRIPTOR_SIZE 2 * (sizeof (unsigned long))
 #define CDB_HEADER_SIZE 256 * CDB_DESCRIPTOR_SIZE
 #define CDB_BUFF_SIZE 64
@@ -139,18 +139,17 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
 
   byte buff[CDB_DESCRIPTOR_SIZE];
 
-  zero();
-  if (cdb) {
-    cdb.close(); // Close previously opened CDB file
+  // Close previously opened CDB file
+  // State - CDB_CLOSED
+  close();
+  
+  if (!fs_.exists(fileName)) {
+    return CDB_NOT_FOUND;
   }
 
-  if (!fs_.exists(fileName)) {
-    return (state = CDB_NOT_FOUND);
-  }
-  //cdb = fs_.open(fileName, FILE_READ);
   cdb = fs_.open(fileName);
   if (!cdb) {
-    return (state = CDB_CLOSED);
+    return CDB_CLOSED;
   }
 
   // CDB hash tables position and slots number integrity check
@@ -210,7 +209,6 @@ cdbResult uCDB<TFileSystem, TFile>::findKey(const void *key, unsigned long keyLe
   // Check CDB state
   switch (state) {
     case CDB_CLOSED:
-    case CDB_NOT_FOUND:
     case CDB_ERROR:
       return state;
     default:
@@ -241,7 +239,6 @@ cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
   // Check CDB state
   switch (state) {
     case CDB_CLOSED:
-    case CDB_NOT_FOUND:
     case CDB_ERROR:
       return state;
     default:
@@ -346,7 +343,6 @@ unsigned long uCDB<TFileSystem, TFile>::recordsNumber() const {
   // Check CDB state
   switch (state) {
     case CDB_CLOSED:
-    case CDB_NOT_FOUND:
     case CDB_ERROR:
       return 0;
     default:
