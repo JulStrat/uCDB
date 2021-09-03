@@ -34,7 +34,7 @@ cdbResult close();
 
 States transitions
 
-<img src="https://github.com/JulStrat/uCDB/blob/master/docs/uCDB_state.png>
+<img src="https://github.com/JulStrat/uCDB/blob/master/docs/uCDB_state.png">
 
 ## Usage examples
 
