@@ -42,9 +42,13 @@ States transitions
 
 <img src="https://github.com/JulStrat/uCDB/blob/master/examples/airports/airports.png">
 
-`benchmark` sketch.
+`benchmark` sketch
 
 <img src="https://github.com/JulStrat/uCDB/blob/master/examples/benchmark/benchmark.png">
+
+`satcat` sketch
+
+<img src="https://github.com/JulStrat/uCDB/blob/master/examples/satcat/satcat.png">
 
 ## License
 
@@ -54,3 +58,4 @@ States transitions
 
 - [CDB](https://cr.yp.to/cdb.html)
 - [airports](https://ourairports.com/data/)
+- [Satellite Catalog](https://celestrak.com/satcat/search.php)
