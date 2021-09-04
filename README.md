@@ -6,6 +6,12 @@
 Arduino library for querying [Constant DataBase](https://en.wikipedia.org/wiki/Cdb_(software)) (key, value) store.
 Simple, :cyclone: fast and portable CDB file format was developed by D. J. Bernstein.
 
+## Features
+
+> **Fast lookups**: A successful lookup in a large database normally takes just two disk accesses. An unsuccessful lookup takes only one.
+> **Low overhead**: A database uses 2048 bytes, plus 24 bytes per record, plus the space for keys and data.
+> **No random limits**: cdb can handle any database up to 4 gigabytes. There are no other restrictions; records don't even have to fit into memory. Databases are stored in a machine-independent format.
+
 Compatible storage libraries:
 - official [Arduino SD](https://github.com/arduino-libraries/SD)
 - [Greiman SdFat](https://github.com/greiman/SdFat)
@@ -25,14 +31,14 @@ int readValue();
 
 int readValue(void *buff, unsigned int byteNum);
 
-unsigned long recordsNumber();
+unsigned long recordsNumber() const;
 
-unsigned long valueAvailable();
+unsigned long valueAvailable() const;
 
 cdbResult close();
-```    
+```
 
-States transitions
+### States transitions
 
 <img src="https://github.com/JulStrat/uCDB/blob/master/docs/uCDB_state.png">
 
@@ -42,13 +48,13 @@ States transitions
 
 <img src="https://github.com/JulStrat/uCDB/blob/master/examples/airports/airports.png">
 
-`benchmark` sketch
-
-<img src="https://github.com/JulStrat/uCDB/blob/master/examples/benchmark/benchmark.png">
-
 `satcat` sketch
 
 <img src="https://github.com/JulStrat/uCDB/blob/master/examples/satcat/satcat.png">
+
+`benchmark` sketch
+
+<img src="https://github.com/JulStrat/uCDB/blob/master/examples/benchmark/benchmark.png">
 
 ## License
 
@@ -57,5 +63,8 @@ States transitions
 ## Links
 
 - [CDB](https://cr.yp.to/cdb.html)
-- [airports](https://ourairports.com/data/)
+
+## Data sets
+
+- [Airports](https://ourairports.com/data/)
 - [Satellite Catalog](https://celestrak.com/satcat/search.php)
