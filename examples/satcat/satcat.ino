@@ -19,6 +19,8 @@
 
 #include <SPI.h>
 #include <SD.h>
+
+#define TRACE_CDB
 #include "uCDB.hpp"
 
 uCDB<SDClass, File> ucdb(SD);

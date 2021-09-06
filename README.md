@@ -20,6 +20,12 @@ Compatible storage libraries:
 - [SdFat - Adafruit fork](https://github.com/adafruit/SdFat)
 - [Adafruit SPIFlash](https://github.com/adafruit/Adafruit_SPIFlash)
 
+Simple tracing for CDB format/integrity and run time file operation errors.
+```C++
+#define TRACE_CDB
+#include "uCDB.hpp"
+```
+
 ## API
 
 ```C++

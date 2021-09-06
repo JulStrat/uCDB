@@ -7,6 +7,22 @@
    @copyright Public Domain
 */
 
+#ifdef TRACE_CDB
+#ifndef TracePrinter
+#define TracePrinter Serial
+#endif
+#define RETURN(statement, message) \
+  TracePrinter.print("[T]: "); \
+  TracePrinter.print(__FUNCTION__); \
+  TracePrinter.print(": "); \
+  TracePrinter.print(__LINE__); \
+  TracePrinter.print(", "); \
+  TracePrinter.println(#message); \
+  return (statement);
+#else
+#define RETURN(statement, message) return (statement);
+#endif
+
 /// uCDB result codes and states
 enum cdbResult {
   CDB_OK = 0,
@@ -69,11 +85,11 @@ class uCDB
         Close CDB
     */
     cdbResult close();
-    
+
     /**
         uCDB destructor
     */
-    ~uCDB();    
+    ~uCDB();
 
   private:
     TFileSystem& fs_;
@@ -142,7 +158,7 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
   // Close previously opened CDB file
   // State - CDB_CLOSED
   close();
-  
+
   if (!fs_.exists(fileName)) {
     return CDB_NOT_FOUND;
   }
@@ -156,7 +172,7 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
 
   // CDB file size must be at least HEADER_SIZE bytes
   if (cdb.size() < CDB_HEADER_SIZE) {
-    return (state = CDB_ERROR);
+    RETURN(state = CDB_ERROR, CDB_ERROR);
   }
 
   dend = cdb.size();
@@ -164,7 +180,7 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
 
   for (unsigned long pos = 0; pos < CDB_HEADER_SIZE; pos += CDB_DESCRIPTOR_SIZE) {
     if (!readDescriptor(buff, pos)) {
-      return (state = CDB_ERROR); // File read error is critical here.
+      RETURN(state = CDB_ERROR, CDB_ERROR); // File read error is critical here.
     }
 
     htPos = unpack(buff);
@@ -174,10 +190,10 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
       continue; // Empty hash table
     }
     if ((htPos < CDB_HEADER_SIZE) || (htPos > cdb.size())) {
-      return (state = CDB_ERROR); // Critical CDB format or data integrity error
+      RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
     }
     if (((cdb.size() - htPos) >> 3) < htSlotsNum) {
-      return (state = CDB_ERROR); // Critical CDB format or data integrity error
+      RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
     }
 
     // Adjust data end position and total slots number
@@ -187,12 +203,12 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
     snum += htSlotsNum;
 
     if (((cdb.size() - dend) >> 3) < snum) {
-      return (state = CDB_ERROR); // Critical CDB format or data integrity error
+      RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
     }
   }
   // Check total
   if ((cdb.size() - dend) != 8 * snum){
-    return (state = CDB_ERROR); // Critical CDB format or data integrity error
+    RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
   }
 
   dataEndPos = dend;
@@ -220,7 +236,7 @@ cdbResult uCDB<TFileSystem, TFile>::findKey(const void *key, unsigned long keyLe
   keyLen_ = keyLen;
 
   if (!readDescriptor(buff, (keyHash & 255) << 3)) {
-    return (state = FILE_ERROR);
+    RETURN(state = FILE_ERROR, FILE_ERROR);
   }
 
   hashTabStartPos = unpack(buff);
@@ -255,7 +271,7 @@ cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
     }
 
     if (!rd) {
-      return (state = FILE_ERROR);
+      RETURN(state = FILE_ERROR, FILE_ERROR);
     }
 
     slotHash = unpack(buff);
@@ -268,12 +284,12 @@ cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
 
     // Check data position
     if ((dataPos < CDB_HEADER_SIZE) || (dataPos > (dataEndPos - CDB_DESCRIPTOR_SIZE))) {
-      return (state = CDB_ERROR); // Critical CDB format or data integrity error
+      RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
     }
 
     if (slotHash == keyHash) {
       if (!readDescriptor(buff, dataPos)) {
-        return (state = FILE_ERROR);
+        RETURN(state = FILE_ERROR, FILE_ERROR);
       }
 
       dataKeyLen = unpack(buff);
@@ -282,11 +298,11 @@ cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
       //> key, value length check
       unsigned long t = dataPos + CDB_DESCRIPTOR_SIZE;
       if ((dataEndPos - t) < dataKeyLen) {
-        return (state = CDB_ERROR); // Critical CDB format or data integrity error
+        RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
       }
       t += dataKeyLen;
       if ((dataEndPos - t) < dataValueLen) {
-        return (state = CDB_ERROR); // Critical CDB format or data integrity error
+        RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
       }
       //< key, value length check
 
@@ -296,7 +312,7 @@ cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
             valueBytesAvail = dataValueLen;
             return (state = KEY_FOUND);
           case FILE_ERROR:
-            return (state = FILE_ERROR);
+            RETURN(state = FILE_ERROR, FILE_ERROR);
           default:
             ;
         }
@@ -366,7 +382,7 @@ cdbResult uCDB<TFileSystem, TFile>::close() {
 
 template <class TFileSystem, class TFile>
 uCDB<TFileSystem, TFile>::~uCDB() {
-  close();    
+  close();
 }
 
 // Private functions

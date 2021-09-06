@@ -21,6 +21,8 @@
 #else
 #include "SdFat.h"
 #endif
+
+#define TRACE_CDB
 #include "uCDB.hpp"
 
 #ifdef USE_SERIALFLASH_LIB
