@@ -168,7 +168,6 @@ class uCDB
 
     unsigned long valueBytesAvail;
 
-    bool readDescriptor(byte *buff, unsigned long pos);
     cdbResult compareKey();
     unsigned long (*hashFunc)(const void *key, unsigned long keyLen);
     void zero();
@@ -179,6 +178,9 @@ class uCDB
 #define CDB_BUFF_SIZE 64
 
 static unsigned long unpack(const byte *buff);
+
+template <class TFile>
+static bool readDescriptor(TFile& file, byte *buff, unsigned long pos);
 
 template <class TFileSystem, class TFile>
 uCDB<TFileSystem, TFile>::uCDB(TFileSystem& fs) : fs_(fs) {
@@ -220,7 +222,7 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
   snum = 0;
 
   for (unsigned long pos = 0; pos < CDB_HEADER_SIZE; pos += CDB_DESCRIPTOR_SIZE) {
-    if (!readDescriptor(buff, pos)) {
+    if (!readDescriptor<TFile>(cdb, buff, pos)) {
       RETURN(state = CDB_ERROR, CDB_ERROR); // File read error is critical here.
     }
 
@@ -276,7 +278,7 @@ cdbResult uCDB<TFileSystem, TFile>::findKey(const void *key, unsigned long keyLe
   key_ = static_cast<const byte *>(key);
   keyLen_ = keyLen;
 
-  if (!readDescriptor(buff, (keyHash & 255) << 3)) {
+  if (!readDescriptor<TFile>(cdb, buff, (keyHash & 255) << 3)) {
     RETURN(state = FILE_ERROR, FILE_ERROR);
   }
 
@@ -303,7 +305,7 @@ cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
   }
 
   while (slotsToScan) {
-    bool rd = readDescriptor(buff, nextSlotPos);
+    bool rd = readDescriptor<TFile>(cdb, buff, nextSlotPos);
     // Adjust slotsToScan and next slot position
     --slotsToScan;
     nextSlotPos += CDB_DESCRIPTOR_SIZE;
@@ -329,7 +331,7 @@ cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
     }
 
     if (slotHash == keyHash) {
-      if (!readDescriptor(buff, dataPos)) {
+      if (!readDescriptor<TFile>(cdb, buff, dataPos)) {
         RETURN(state = FILE_ERROR, FILE_ERROR);
       }
 
@@ -458,18 +460,6 @@ cdbResult uCDB<TFileSystem, TFile>::compareKey() {
 }
 
 template <class TFileSystem, class TFile>
-bool uCDB<TFileSystem, TFile>::readDescriptor(byte *buff, unsigned long pos) {
-  if (cdb.position() != pos) {
-    cdb.seek(pos);
-    if (cdb.position() != pos) {
-      return false;
-    }
-  }
-
-  return (cdb.read(buff, CDB_DESCRIPTOR_SIZE) == CDB_DESCRIPTOR_SIZE);
-}
-
-template <class TFileSystem, class TFile>
 void uCDB<TFileSystem, TFile>::zero() {
   slotsToScan = 0;
   nextSlotPos = 0;
@@ -500,6 +490,18 @@ unsigned long unpack(const byte *buff) {
   v = (v << 8) + buff[0];
 
   return v;
+}
+
+template <class TFile>
+bool readDescriptor(TFile& file, byte *buff, unsigned long pos) {
+  if (file.position() != pos) {
+    file.seek(pos);
+    if (file.position() != pos) {
+      return false;
+    }
+  }
+
+  return (file.read(buff, CDB_DESCRIPTOR_SIZE) == CDB_DESCRIPTOR_SIZE);
 }
 
 #undef CDB_HEADER_SIZE
