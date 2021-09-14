@@ -16,7 +16,7 @@
   Board: Arduino Uno
   SD card: SDHC 7.31Gb FAT32, sectorsPerCluster - 64
   SD chip select pin: 10
-  Arduino IDE Serial Monitors settings: 9600 baud, no line ending.
+  Arduino IDE Serial Monitors settings: 115200 baud, no line ending.
 
   Created by Ioulianos Kakoulidis, 2021.
   Released into the public domain.     
@@ -75,7 +75,7 @@ void setup() {
   const char fileName[] = "airports.cdb";
   const char *air[] = {"SBGL", "00AR", "PG-TFI", "US-0480", "ZYGH"};
 
-  Serial.begin(9600);
+  Serial.begin(115200);
   while (!Serial) {
     ;
   }
