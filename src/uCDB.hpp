@@ -52,16 +52,16 @@
 #ifndef TracePrinter
 #define TracePrinter Serial
 #endif
-#define RETURN(statement, message) \
+#define RETURN(statement, var) \
   TracePrinter.print("[T]: "); \
   TracePrinter.print(__FUNCTION__); \
   TracePrinter.print(": "); \
   TracePrinter.print(__LINE__); \
   TracePrinter.print(", "); \
-  TracePrinter.println(#message); \
+  TracePrinter.println(var); \
   return (statement);
 #else
-#define RETURN(statement, message) return (statement);
+#define RETURN(statement, var) return (statement);
 #endif
 
 /// uCDB result codes and states
@@ -223,7 +223,7 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
 
   for (unsigned long pos = 0; pos < CDB_HEADER_SIZE; pos += CDB_DESCRIPTOR_SIZE) {
     if (!readDescriptor<TFile>(cdb, buff, pos)) {
-      RETURN(state = CDB_ERROR, CDB_ERROR); // File read error is critical here.
+      RETURN(state = CDB_ERROR, pos); // File read error is critical here.
     }
 
     htPos = unpack(buff);
@@ -233,10 +233,10 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
       continue; // Empty hash table
     }
     if ((htPos < CDB_HEADER_SIZE) || (htPos > cdb.size())) {
-      RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
+      RETURN(state = CDB_ERROR, htPos); // Critical CDB format or data integrity error
     }
     if (((cdb.size() - htPos) >> 3) < htSlotsNum) {
-      RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
+      RETURN(state = CDB_ERROR, htSlotsNum); // Critical CDB format or data integrity error
     }
 
     // Adjust data end position and total slots number
@@ -246,12 +246,12 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
     snum += htSlotsNum;
 
     if (((cdb.size() - dend) >> 3) < snum) {
-      RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
+      RETURN(state = CDB_ERROR, snum); // Critical CDB format or data integrity error
     }
   }
   // Check total
   if ((cdb.size() - dend) != 8 * snum){
-    RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
+    RETURN(state = CDB_ERROR, 8 * snum); // Critical CDB format or data integrity error
   }
 
   dataEndPos = dend;

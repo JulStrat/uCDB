@@ -4,7 +4,7 @@
   Board: Arduino Uno
   SD card: SDHC 7.31Gb FAT32, sectorsPerCluster - 64
   SD chip select pin: 10
-  Arduino IDE Serial Monitors settings: 9600 baud, no line ending.
+  Arduino IDE Serial Monitors settings: 115200 baud, no line ending.
 
   Created by Ioulianos Kakoulidis, 2021.
   Released into the public domain.
@@ -15,10 +15,32 @@
 #define TRACE_CDB
 #include "uCDB.hpp"
 
+#define RAND_NAME "___XX___.$$$"
+
 SdFat fat;
 
+bool gen_random(unsigned long sz) {
+  long v, p = 8 * sz - 2056;
+  File rf = fat.open(RAND_NAME, O_CREAT | O_WRITE | O_TRUNC);
+
+  if (!rf) {
+    return false;
+  }
+  randomSeed(random(0x7FFFFFFF));
+
+  for(; sz > 0; --sz) {
+    v = random(2048, p);
+    rf.write(&v, sizeof (long));
+    v = random(16);
+    rf.write(&v, sizeof (long));
+  }
+  rf.close();
+
+  return true;
+}
+
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
   while (!Serial) {
     ;
   }
@@ -110,6 +132,131 @@ bool closed_test3() {
   return true;
 }
 
+bool random_test1() {
+  uCDB<SdFat, File> ucdb(fat);
+  byte buff[64];
+
+  gen_random(10);
+
+  if (ucdb.open(RAND_NAME) != CDB_ERROR) {
+    ucdb.close();
+    return false;
+  }
+
+  if (ucdb.findNextValue() != CDB_ERROR)
+    return false;
+  if (ucdb.findKey("ZYGH", 3) != CDB_ERROR)
+    return false;
+  if (ucdb.findNextValue() != CDB_ERROR)
+    return false;
+  if (ucdb.findKey("AAAA", 3) != CDB_ERROR)
+    return false;
+
+  if (ucdb.readValue() != -1)
+    return false;
+  if (ucdb.readValue(buff, 64) != -1)
+    return false;
+  if (ucdb.valueAvailable() != 0)
+    return false;
+  if (ucdb.recordsNumber() != 0)
+    return false;
+  return true;
+}
+
+
+bool random_test2() {
+  uCDB<SdFat, File> ucdb(fat);
+  byte buff[64];
+
+  gen_random(512);
+
+  if (ucdb.open(RAND_NAME) != CDB_ERROR) {
+    ucdb.close();
+    return false;
+  }
+
+  if (ucdb.findNextValue() != CDB_ERROR)
+    return false;
+  if (ucdb.findKey("ZYGH", 3) != CDB_ERROR)
+    return false;
+  if (ucdb.findNextValue() != CDB_ERROR)
+    return false;
+  if (ucdb.findKey("AAAA", 3) != CDB_ERROR)
+    return false;
+
+  if (ucdb.readValue() != -1)
+    return false;
+  if (ucdb.readValue(buff, 64) != -1)
+    return false;
+  if (ucdb.valueAvailable() != 0)
+    return false;
+  if (ucdb.recordsNumber() != 0)
+    return false;
+  return true;
+}
+
+bool random_test3() {
+  uCDB<SdFat, File> ucdb(fat);
+  byte buff[64];
+
+  gen_random(1024*4);
+
+  if (ucdb.open(RAND_NAME) != CDB_ERROR) {
+    ucdb.close();
+    return false;
+  }
+
+  if (ucdb.findNextValue() != CDB_ERROR)
+    return false;
+  if (ucdb.findKey("ZYGH", 3) != CDB_ERROR)
+    return false;
+  if (ucdb.findNextValue() != CDB_ERROR)
+    return false;
+  if (ucdb.findKey("AAAA", 3) != CDB_ERROR)
+    return false;
+
+  if (ucdb.readValue() != -1)
+    return false;
+  if (ucdb.readValue(buff, 64) != -1)
+    return false;
+  if (ucdb.valueAvailable() != 0)
+    return false;
+  if (ucdb.recordsNumber() != 0)
+    return false;
+  return true;
+}
+
+bool random_test4() {
+  uCDB<SdFat, File> ucdb(fat);
+  byte buff[64];
+
+  gen_random(1024*8);
+
+  if (ucdb.open(RAND_NAME) != CDB_ERROR) {
+    ucdb.close();
+    return false;
+  }
+
+  if (ucdb.findNextValue() != CDB_ERROR)
+    return false;
+  if (ucdb.findKey("ZYGH", 3) != CDB_ERROR)
+    return false;
+  if (ucdb.findNextValue() != CDB_ERROR)
+    return false;
+  if (ucdb.findKey("AAAA", 3) != CDB_ERROR)
+    return false;
+
+  if (ucdb.readValue() != -1)
+    return false;
+  if (ucdb.readValue(buff, 64) != -1)
+    return false;
+  if (ucdb.valueAvailable() != 0)
+    return false;
+  if (ucdb.recordsNumber() != 0)
+    return false;
+  return true;
+}
+
 void loop() {
   char str[16];
   long key;
@@ -125,6 +272,10 @@ void loop() {
   Serial.println(closed_test1());
   Serial.println(closed_test2());
   Serial.println(closed_test3());
+  Serial.println(random_test1());
+  Serial.println(random_test2());
+  Serial.println(random_test3());
+  Serial.println(random_test4());
 
   while (Serial.available()) {
     Serial.read();
