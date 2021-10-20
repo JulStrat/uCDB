@@ -217,11 +217,26 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
   if (cdb.size() < CDB_HEADER_SIZE) {
     RETURN(state = CDB_ERROR, CDB_ERROR);
   }
+  
+  if (!readDescriptor<TFile>(cdb, buff, 0)) {
+    RETURN(state = CDB_ERROR, 0); // File read error is critical here.
+  }
+  
+  htPos = unpack(buff);
+  htSlotsNum = unpack(buff + 4);
 
-  dend = cdb.size();
-  snum = 0;
+  if ((htPos < CDB_HEADER_SIZE) || (htPos > cdb.size())) {
+    RETURN(state = CDB_ERROR, htPos); // Critical CDB format or data integrity error
+  }
+  if (((cdb.size() - htPos) >> 3) < htSlotsNum) {
+    RETURN(state = CDB_ERROR, htSlotsNum); // Critical CDB format or data integrity error
+  }
 
-  for (unsigned long pos = 0; pos < CDB_HEADER_SIZE; pos += CDB_DESCRIPTOR_SIZE) {
+  // First hash table begins exactly after data section.
+  dend = htPos;
+  snum += htSlotsNum;
+
+  for (unsigned long pos = CDB_DESCRIPTOR_SIZE; pos < CDB_HEADER_SIZE; pos += CDB_DESCRIPTOR_SIZE) {
     if (!readDescriptor<TFile>(cdb, buff, pos)) {
       RETURN(state = CDB_ERROR, pos); // File read error is critical here.
     }
@@ -229,25 +244,15 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
     htPos = unpack(buff);
     htSlotsNum = unpack(buff + 4);
 
-    if (!htPos) {
-      continue; // Empty hash table
+    if (htPos != dend + snum * CDB_DESCRIPTOR_SIZE) {
+      RETURN(state = CDB_ERROR, htPos); // Critical CDB format or data integrity error        
     }
-    if ((htPos < CDB_HEADER_SIZE) || (htPos > cdb.size())) {
-      RETURN(state = CDB_ERROR, htPos); // Critical CDB format or data integrity error
-    }
+
     if (((cdb.size() - htPos) >> 3) < htSlotsNum) {
       RETURN(state = CDB_ERROR, htSlotsNum); // Critical CDB format or data integrity error
     }
 
-    // Adjust data end position and total slots number
-    if (htPos < dend) {
-      dend = htPos;
-    }
     snum += htSlotsNum;
-
-    if (((cdb.size() - dend) >> 3) < snum) {
-      RETURN(state = CDB_ERROR, snum); // Critical CDB format or data integrity error
-    }
   }
   // Check total
   if ((cdb.size() - dend) != 8 * snum){
