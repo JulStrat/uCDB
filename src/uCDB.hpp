@@ -121,6 +121,11 @@ class uCDB
         The number of `value' bytes available for reading
     */
     unsigned long valueAvailable() const;
+    
+    /**
+        Current state
+    */
+    cdbResult status() const;
 
     /**
         Close CDB
@@ -194,7 +199,7 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
   unsigned long htSlotsNum;
 
   unsigned long dend;
-  unsigned long snum;
+  unsigned long snum = 0;
 
   byte buff[CDB_DESCRIPTOR_SIZE];
 
@@ -215,7 +220,7 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
 
   // CDB file size must be at least HEADER_SIZE bytes
   if (cdb.size() < CDB_HEADER_SIZE) {
-    RETURN(state = CDB_ERROR, CDB_ERROR);
+    RETURN(state = CDB_ERROR, cdb.size());
   }
   
   if (!readDescriptor<TFile>(cdb, buff, 0)) {
@@ -226,10 +231,10 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
   htSlotsNum = unpack(buff + 4);
 
   if ((htPos < CDB_HEADER_SIZE) || (htPos > cdb.size())) {
-    RETURN(state = CDB_ERROR, htPos); // Critical CDB format or data integrity error
+    RETURN(state = CDB_ERROR, htPos); // Invalid hash table position
   }
   if (((cdb.size() - htPos) >> 3) < htSlotsNum) {
-    RETURN(state = CDB_ERROR, htSlotsNum); // Critical CDB format or data integrity error
+    RETURN(state = CDB_ERROR, htSlotsNum); // Invalid hash table slots number
   }
 
   // First hash table begins exactly after data section.
@@ -245,11 +250,11 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
     htSlotsNum = unpack(buff + 4);
 
     if (htPos != dend + snum * CDB_DESCRIPTOR_SIZE) {
-      RETURN(state = CDB_ERROR, htPos); // Critical CDB format or data integrity error        
+      RETURN(state = CDB_ERROR, htPos); // Invalid hash table position
     }
 
     if (((cdb.size() - htPos) >> 3) < htSlotsNum) {
-      RETURN(state = CDB_ERROR, htSlotsNum); // Critical CDB format or data integrity error
+      RETURN(state = CDB_ERROR, htSlotsNum); // Invalid hash table slots number
     }
 
     snum += htSlotsNum;
@@ -319,7 +324,7 @@ cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
     }
 
     if (!rd) {
-      RETURN(state = FILE_ERROR, FILE_ERROR);
+      RETURN(state = FILE_ERROR, nextSlotPos);
     }
 
     slotHash = unpack(buff);
@@ -332,12 +337,12 @@ cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
 
     // Check data position
     if ((dataPos < CDB_HEADER_SIZE) || (dataPos > (dataEndPos - CDB_DESCRIPTOR_SIZE))) {
-      RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
+      RETURN(state = CDB_ERROR, dataPos); // Invalid data position
     }
 
     if (slotHash == keyHash) {
       if (!readDescriptor<TFile>(cdb, buff, dataPos)) {
-        RETURN(state = FILE_ERROR, FILE_ERROR);
+        RETURN(state = FILE_ERROR, dataPos);
       }
 
       dataKeyLen = unpack(buff);
@@ -346,11 +351,11 @@ cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
       //> key, value length check
       unsigned long t = dataPos + CDB_DESCRIPTOR_SIZE;
       if ((dataEndPos - t) < dataKeyLen) {
-        RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
+        RETURN(state = CDB_ERROR, dataKeyLen); // Invalid key length
       }
       t += dataKeyLen;
       if ((dataEndPos - t) < dataValueLen) {
-        RETURN(state = CDB_ERROR, CDB_ERROR); // Critical CDB format or data integrity error
+        RETURN(state = CDB_ERROR, dataValueLen); // Invalid value length
       }
       //< key, value length check
 
@@ -417,6 +422,11 @@ unsigned long uCDB<TFileSystem, TFile>::recordsNumber() const {
 template <class TFileSystem, class TFile>
 unsigned long uCDB<TFileSystem, TFile>::valueAvailable() const {
   return ((state == KEY_FOUND) ? valueBytesAvail : 0);
+}
+
+template <class TFileSystem, class TFile>
+cdbResult uCDB<TFileSystem, TFile>::status() const {
+  return state;
 }
 
 template <class TFileSystem, class TFile>
