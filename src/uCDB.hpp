@@ -1,10 +1,36 @@
-/**
-    @file uCDB.hpp
-    uCDB template implementation
+/*
+This is free and unencumbered software released into the public domain.
 
-    @author    Ioulianos Kakoulidis
-    @date      2021
-    @copyright Public Domain
+Anyone is free to copy, modify, publish, use, compile, sell, or
+distribute this software, either in source code form or as a compiled
+binary, for any purpose, commercial or non-commercial, and by any
+means.
+
+In jurisdictions that recognize copyright laws, the author or authors
+of this software dedicate any and all copyright interest in the
+software to the public domain. We make this dedication for the benefit
+of the public at large and to the detriment of our heirs and
+successors. We intend this dedication to be an overt act of
+relinquishment in perpetuity of all present and future rights to this
+software under copyright law.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+For more information, please refer to <https://unlicense.org>
+*/
+
+/**
+    @file       uCDB.hpp
+    Constant DataBase interface classes
+    @author     Ioulianos Kakoulidis
+    @date       2021
+    @copyright  The Unlicense
 
 
         A structure for constant databases
@@ -44,9 +70,13 @@
         you find the record or run into an empty slot.
 
         The cdb hash function is `h = ((h << 5) + h) ^ c`, with a starting
-        hash of 5381.   
+        hash of 5381.
 
 */
+
+#define UCDB_VERSION_MAJOR 0
+#define UCDB_VERSION_MINOR 6
+#define UCDB_VERSION_PATCH 0
 
 #ifdef TRACE_CDB
 #ifndef TracePrinter
@@ -67,16 +97,17 @@
 /// uCDB result codes and states
 enum cdbResult {
   CDB_OK = 0,
-  CDB_CLOSED, ///< Initial state
-  CDB_NOT_FOUND, ///< open() result
-  CDB_ERROR,  ///< CDB data integrity critical error
-  FILE_ERROR, ///< File operation (open/seek/read) error
+  CDB_CLOSED,       ///< Initial state
+  CDB_NOT_FOUND,    ///< open() result
+  CDB_ERROR,        ///< CDB data integrity critical error
+  FILE_ERROR,       ///< File operation (open/seek/read) error
   KEY_FOUND,
   KEY_NOT_FOUND
 };
 
 unsigned long DJBHash(const void *key, unsigned long keyLen);
 
+//> uCDB class declaration
 template <class TFileSystem, class TFile>
 class uCDB
 {
@@ -121,7 +152,7 @@ class uCDB
         The number of `value' bytes available for reading
     */
     unsigned long valueAvailable() const;
-    
+
     /**
         Current state
     */
@@ -177,16 +208,97 @@ class uCDB
     unsigned long (*hashFunc)(const void *key, unsigned long keyLen);
     void zero();
 };
+//< uCDB class declaration
+
+//> uCDBMaker class declaration
+template <class TFileSystem, class TFile>
+class uCDBMaker
+{
+  public:
+    uCDBMaker(TFileSystem& fs);
+
+    /**
+        Creates two temporary files - first for header and data, second for hash tables
+        @param fileName  CDB filename without extension
+        @param userHashFunc  User provided hash function, default - DJBHash
+    */
+    cdbResult init(const char *fileName, unsigned long (*userHashFunc)(const void *key, unsigned long keyLen) = DJBHash);
+
+    /**
+        Append `key' and `value' record
+    */
+    cdbResult appendKeyValue(const void *key, unsigned long keyLen, const void *value, unsigned long valueLen);
+
+    /**
+        Total records number in CDB
+    */
+    unsigned long recordsNumber() const;
+
+    /**
+        Current state
+    */
+    cdbResult status() const;
+
+    /**
+        Create final CDB file
+    */
+    cdbResult finalize();
+
+    /**
+        uCDBMaker destructor
+    */
+    ~uCDBMaker();
+
+  private:
+    TFileSystem& fs_;
+    char cdbName[13]; // DOS file name
+    TFile cdbData, cdbHashTab;
+    cdbResult state;
+
+    const byte *key_;
+    unsigned long keyLen_;
+    unsigned long keyHash;
+
+    unsigned long dataEndPos; ///< Data end position
+    unsigned long slotsNum;   ///< Total slots number in CDB.
+
+    /// @name Hash table descriptor (HEADER section)
+    /// @{
+    unsigned long hashTabStartPos; ///< Hash table position
+    unsigned long hashTabSlotsNum; ///< Hash table slot number
+    /// @}
+    unsigned long hashTabEndPos; ///< hashTabStartPos + 8 * hashTabSlotsNum
+
+    /// @name Slot descriptor (HASH TABLE section)
+    /// @{
+    unsigned long slotHash;
+    unsigned long dataPos;
+    /// @}
+
+    unsigned long slotsToScan;
+    unsigned long nextSlotPos;
+
+    unsigned long (*hashFunc)(const void *key, unsigned long keyLen);
+    void zero();
+};
+//< uCDBMaker class declaration
 
 #define CDB_DESCRIPTOR_SIZE 2 * (sizeof (unsigned long))
 #define CDB_HEADER_SIZE 256 * CDB_DESCRIPTOR_SIZE
 #define CDB_BUFF_SIZE 64
 
+//> Private static functions declaration
 static unsigned long unpack(const byte *buff);
 
 template <class TFile>
 static bool readDescriptor(TFile& file, byte *buff, unsigned long pos);
 
+template <class TFile>
+static bool writeDescriptor(TFile& file, byte *buff, unsigned long pos);
+//< Private static functions declaration
+
+
+//> uCDB class definition
 template <class TFileSystem, class TFile>
 uCDB<TFileSystem, TFile>::uCDB(TFileSystem& fs) : fs_(fs) {
   zero();
@@ -222,11 +334,11 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
   if (cdb.size() < CDB_HEADER_SIZE) {
     RETURN(state = CDB_ERROR, cdb.size());
   }
-  
+
   if (!readDescriptor<TFile>(cdb, buff, 0)) {
     RETURN(state = CDB_ERROR, 0); // File read error is critical here.
   }
-  
+
   htPos = unpack(buff);
   htSlotsNum = unpack(buff + 4);
 
@@ -443,7 +555,7 @@ uCDB<TFileSystem, TFile>::~uCDB() {
   close();
 }
 
-// Private functions
+//> Private uCDB class methods
 template <class TFileSystem, class TFile>
 cdbResult uCDB<TFileSystem, TFile>::compareKey() {
   const byte *key = key_;
@@ -479,6 +591,8 @@ void uCDB<TFileSystem, TFile>::zero() {
   slotsToScan = 0;
   nextSlotPos = 0;
 }
+//< Private uCDB class methods
+//< uCDB class definition
 
 #define DJB_START_HASH 5381UL
 unsigned long DJBHash(const void *key, unsigned long keyLen) {
@@ -495,8 +609,43 @@ unsigned long DJBHash(const void *key, unsigned long keyLen) {
 }
 #undef DJB_START_HASH
 
-// Static functions
+//> uCDBMaker class definition
+template <class TFileSystem, class TFile>
+uCDBMaker<TFileSystem, TFile>::uCDBMaker(TFileSystem& fs) : fs_(fs) {
+  state = CDB_CLOSED;
+}
 
+template <class TFileSystem, class TFile>
+cdbResult uCDBMaker<TFileSystem, TFile>::init(const char *fileName, unsigned long (*userHashFunc)(const void *key, unsigned long keyLen)) {
+  return CDB_OK;
+}
+
+template <class TFileSystem, class TFile>
+cdbResult uCDBMaker<TFileSystem, TFile>::appendKeyValue(const void *key, unsigned long keyLen, const void *value, unsigned long valueLen) {
+  return CDB_OK;
+}
+
+template <class TFileSystem, class TFile>
+unsigned long uCDBMaker<TFileSystem, TFile>::recordsNumber() const {
+  return 0;
+}
+
+template <class TFileSystem, class TFile>
+cdbResult uCDBMaker<TFileSystem, TFile>::status() const {
+  return state;
+}
+
+template <class TFileSystem, class TFile>
+cdbResult uCDBMaker<TFileSystem, TFile>::finalize() {
+  return CDB_OK;
+}
+
+template <class TFileSystem, class TFile>
+uCDBMaker<TFileSystem, TFile>::~uCDBMaker() {
+}
+//< uCDBMaker class definition
+
+//> Private static functions definition
 unsigned long unpack(const byte *buff) {
   unsigned long v = buff[3];
 
@@ -518,6 +667,19 @@ bool readDescriptor(TFile& file, byte *buff, unsigned long pos) {
 
   return (file.read(buff, CDB_DESCRIPTOR_SIZE) == CDB_DESCRIPTOR_SIZE);
 }
+
+template <class TFile>
+bool writeDescriptor(TFile& file, byte *buff, unsigned long pos) {
+  if (file.position() != pos) {
+    file.seek(pos);
+    if (file.position() != pos) {
+      return false;
+    }
+  }
+
+  return (file.write(buff, CDB_DESCRIPTOR_SIZE) == CDB_DESCRIPTOR_SIZE);
+}
+//< Private static functions definition
 
 #undef CDB_HEADER_SIZE
 #undef CDB_DESCRIPTOR_SIZE
