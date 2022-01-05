@@ -288,6 +288,7 @@ class uCDBMaker
 #define CDB_BUFF_SIZE 64
 
 //> Private static functions declaration
+static void pack(unsigned long v, byte *buff);
 static unsigned long unpack(const byte *buff);
 
 template <class TFile>
@@ -617,12 +618,55 @@ uCDBMaker<TFileSystem, TFile>::uCDBMaker(TFileSystem& fs) : fs_(fs) {
 
 template <class TFileSystem, class TFile>
 cdbResult uCDBMaker<TFileSystem, TFile>::init(const char *fileName, unsigned long (*userHashFunc)(const void *key, unsigned long keyLen)) {
-  return CDB_OK;
+  byte buff[CDB_DESCRIPTOR_SIZE];
+  
+  hashFunc = userHashFunc;
+  
+  cdbData = fs_.open("testdata.111", O_RDWR | O_CREAT | O_TRUNC);
+  cdbHashTab = fs_.open("testhtab.222", O_RDWR | O_CREAT | O_TRUNC);
+  
+  pack(0UL, buff);
+  pack(0UL, buff+4);
+  
+  for (unsigned long pos = 0UL; pos < CDB_HEADER_SIZE; pos += CDB_DESCRIPTOR_SIZE) {
+    if (!writeDescriptor<TFile>(cdbData, buff, pos)) {
+      RETURN(state = CDB_ERROR, pos);
+    }
+  }
+  
+  return state = CDB_OK;
 }
 
 template <class TFileSystem, class TFile>
 cdbResult uCDBMaker<TFileSystem, TFile>::appendKeyValue(const void *key, unsigned long keyLen, const void *value, unsigned long valueLen) {
-  return CDB_OK;
+  unsigned long pos;
+  unsigned long hash;
+  byte buff[CDB_DESCRIPTOR_SIZE];  
+  
+  hash = hashFunc(key, keyLen);
+
+  pack(keyLen, buff);
+  pack(valueLen, buff+4);
+
+  // Write key, value descriptor
+  pos = cdbData.size();
+  if (!writeDescriptor<TFile>(cdbData, buff, pos)) {
+    RETURN(state = CDB_ERROR, pos);
+  }
+
+  // Write key
+  pos = cdbData.size();
+  if (cdbData.write(static_cast<const byte *>(key), (size_t)keyLen) != (size_t)keyLen) {
+    RETURN(state = CDB_ERROR, pos);  
+  }
+
+  // Write value
+  pos = cdbData.size();
+  if (cdbData.write(static_cast<const byte *>(value), (size_t)valueLen) != (size_t)valueLen) {
+    RETURN(state = CDB_ERROR, pos);    
+  }
+  
+  return state = CDB_OK;
 }
 
 template <class TFileSystem, class TFile>
@@ -637,7 +681,11 @@ cdbResult uCDBMaker<TFileSystem, TFile>::status() const {
 
 template <class TFileSystem, class TFile>
 cdbResult uCDBMaker<TFileSystem, TFile>::finalize() {
-  return CDB_OK;
+    
+  cdbData.close();
+  cdbHashTab.close();
+  
+  return state = CDB_CLOSED;
 }
 
 template <class TFileSystem, class TFile>
@@ -646,6 +694,15 @@ uCDBMaker<TFileSystem, TFile>::~uCDBMaker() {
 //< uCDBMaker class definition
 
 //> Private static functions definition
+void pack(unsigned long v, byte *buff) {
+  buff[0] = v & 255;
+  v >>= 8;
+  buff[1] = v & 255;
+  v >>= 8;
+  buff[2] = v & 255;
+  buff[3] = v >> 8;
+}
+
 unsigned long unpack(const byte *buff) {
   unsigned long v = buff[3];
 
