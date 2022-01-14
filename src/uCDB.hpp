@@ -94,6 +94,10 @@ For more information, please refer to <https://unlicense.org>
 #define RETURN(statement, var) return (statement);
 #endif
 
+#define CDB_DESCRIPTOR_SIZE 2 * (sizeof (unsigned long))
+#define CDB_HEADER_SIZE 256 * CDB_DESCRIPTOR_SIZE
+#define CDB_BUFF_SIZE 64
+
 /// uCDB result codes and states
 enum cdbResult {
   CDB_OK = 0,
@@ -210,94 +214,12 @@ class uCDB
 };
 //< uCDB class declaration
 
-//> uCDBMaker class declaration
-template <class TFileSystem, class TFile>
-class uCDBMaker
-{
-  public:
-    uCDBMaker(TFileSystem& fs);
-
-    /**
-        Creates two temporary files - first for header and data, second for hash tables
-        @param fileName  CDB filename without extension
-        @param userHashFunc  User provided hash function, default - DJBHash
-    */
-    cdbResult init(const char *fileName, unsigned long (*userHashFunc)(const void *key, unsigned long keyLen) = DJBHash);
-
-    /**
-        Append `key' and `value' record
-    */
-    cdbResult appendKeyValue(const void *key, unsigned long keyLen, const void *value, unsigned long valueLen);
-
-    /**
-        Total records number in CDB
-    */
-    unsigned long recordsNumber() const;
-
-    /**
-        Current state
-    */
-    cdbResult status() const;
-
-    /**
-        Create final CDB file
-    */
-    cdbResult finalize();
-
-    /**
-        uCDBMaker destructor
-    */
-    ~uCDBMaker();
-
-  private:
-    TFileSystem& fs_;
-    char cdbName[13]; // DOS file name
-    TFile cdbData, cdbHashTab;
-    cdbResult state;
-
-    const byte *key_;
-    unsigned long keyLen_;
-    unsigned long keyHash;
-
-    unsigned long dataEndPos; ///< Data end position
-    unsigned long slotsNum;   ///< Total slots number in CDB.
-
-    /// @name Hash table descriptor (HEADER section)
-    /// @{
-    unsigned long hashTabStartPos; ///< Hash table position
-    unsigned long hashTabSlotsNum; ///< Hash table slot number
-    /// @}
-    unsigned long hashTabEndPos; ///< hashTabStartPos + 8 * hashTabSlotsNum
-
-    /// @name Slot descriptor (HASH TABLE section)
-    /// @{
-    unsigned long slotHash;
-    unsigned long dataPos;
-    /// @}
-
-    unsigned long slotsToScan;
-    unsigned long nextSlotPos;
-
-    unsigned long (*hashFunc)(const void *key, unsigned long keyLen);
-    void zero();
-};
-//< uCDBMaker class declaration
-
-#define CDB_DESCRIPTOR_SIZE 2 * (sizeof (unsigned long))
-#define CDB_HEADER_SIZE 256 * CDB_DESCRIPTOR_SIZE
-#define CDB_BUFF_SIZE 64
-
 //> Private static functions declaration
-static void pack(unsigned long v, byte *buff);
 static unsigned long unpack(const byte *buff);
 
 template <class TFile>
 static bool readDescriptor(TFile& file, byte *buff, unsigned long pos);
-
-template <class TFile>
-static bool writeDescriptor(TFile& file, byte *buff, unsigned long pos);
 //< Private static functions declaration
-
 
 //> uCDB class definition
 template <class TFileSystem, class TFile>
@@ -610,6 +532,116 @@ unsigned long DJBHash(const void *key, unsigned long keyLen) {
 }
 #undef DJB_START_HASH
 
+//> Private static functions definition
+unsigned long unpack(const byte *buff) {
+  unsigned long v = buff[3];
+
+  v = (v << 8) + buff[2];
+  v = (v << 8) + buff[1];
+  v = (v << 8) + buff[0];
+
+  return v;
+}
+
+template <class TFile>
+bool readDescriptor(TFile& file, byte *buff, unsigned long pos) {
+  if (file.position() != pos) {
+    file.seek(pos);
+    if (file.position() != pos) {
+      return false;
+    }
+  }
+
+  return (file.read(buff, CDB_DESCRIPTOR_SIZE) == CDB_DESCRIPTOR_SIZE);
+}
+//< Private static functions definition
+
+#ifdef USE_UCDB_MAKER
+//> uCDBMaker class declaration
+template <class TFileSystem, class TFile>
+class uCDBMaker
+{
+  public:
+    uCDBMaker(TFileSystem& fs);
+
+    /**
+        Creates two temporary files - first for header and data, second for hash tables
+        @param fileName  CDB filename without extension
+        @param userHashFunc  User provided hash function, default - DJBHash
+    */
+    cdbResult init(const char *fileName,
+                   unsigned long (*userHashFunc)(const void *key, unsigned long keyLen) = DJBHash);
+
+    /**
+        Append `key' and `value' record
+    */
+    cdbResult appendKeyValue(const void *key, unsigned long keyLen,
+                             const void *value, unsigned long valueLen);
+
+    /**
+        Total records number in CDB
+    */
+    unsigned long recordsNumber() const;
+
+    /**
+        Current state
+    */
+    cdbResult status() const;
+
+    /**
+        Create final CDB file
+    */
+    cdbResult finalize();
+
+    /**
+        uCDBMaker destructor
+    */
+    ~uCDBMaker();
+
+  private:
+    TFileSystem& fs_;
+    char cdbName[13]; // DOS file name
+    TFile cdbData, cdbHashTab;
+    cdbResult state;
+
+    //const byte *key_;
+    //unsigned long keyLen_;
+    //unsigned long keyHash;
+
+    unsigned long dataEndPos; ///< Data end position
+    unsigned long slotsNum;   ///< Total slots number in CDB.
+
+    /// @name Hash table descriptor (HEADER section)
+    /// @{
+    //unsigned long hashTabStartPos; ///< Hash table position
+    //unsigned long hashTabSlotsNum; ///< Hash table slot number
+    /// @}
+    unsigned long hashTabEndPos; ///< hashTabStartPos + 8 * hashTabSlotsNum
+
+    /// @name Slot descriptor (HASH TABLE section)
+    /// @{
+    //unsigned long slotHash;
+    //unsigned long dataPos;
+    /// @}
+
+    //unsigned long slotsToScan;
+    //unsigned long nextSlotPos;
+
+    unsigned long (*hashFunc)(const void *key, unsigned long keyLen);
+    void zero();
+};
+//< uCDBMaker class declaration
+
+//> Private static functions declaration
+static void pack(unsigned long v, byte *buff);
+
+template <class TFile>
+static bool writeDescriptor(TFile& file, byte *buff, unsigned long pos);
+
+template <class TFile>
+static bool writeDescriptor(TFile& file, byte *buff);
+//< Private static functions declaration
+
 //> uCDBMaker class definition
 template <class TFileSystem, class TFile>
 uCDBMaker<TFileSystem, TFile>::uCDBMaker(TFileSystem& fs) : fs_(fs) {
@@ -617,61 +649,92 @@ uCDBMaker<TFileSystem, TFile>::uCDBMaker(TFileSystem& fs) : fs_(fs) {
 }
 
 template <class TFileSystem, class TFile>
-cdbResult uCDBMaker<TFileSystem, TFile>::init(const char *fileName, unsigned long (*userHashFunc)(const void *key, unsigned long keyLen)) {
+cdbResult uCDBMaker<TFileSystem, TFile>::init(
+  const char *fileName,
+  unsigned long (*userHashFunc)(const void *key, unsigned long keyLen)) {
   byte buff[CDB_DESCRIPTOR_SIZE];
   
   hashFunc = userHashFunc;
-  
   cdbData = fs_.open("testdata.111", O_RDWR | O_CREAT | O_TRUNC);
   cdbHashTab = fs_.open("testhtab.222", O_RDWR | O_CREAT | O_TRUNC);
   
-  pack(0UL, buff);
-  pack(0UL, buff+4);
+  // Write zero header
+  pack(0, buff);
+  pack(0, buff + 4);
   
-  for (unsigned long pos = 0UL; pos < CDB_HEADER_SIZE; pos += CDB_DESCRIPTOR_SIZE) {
+  for (unsigned long pos = 0;
+       pos < CDB_HEADER_SIZE;
+       pos += CDB_DESCRIPTOR_SIZE) {
     if (!writeDescriptor<TFile>(cdbData, buff, pos)) {
       RETURN(state = CDB_ERROR, pos);
     }
   }
-  
+  slotsNum = 0;
   return state = CDB_OK;
 }
 
+// keyLen, valueLen arg types ?
 template <class TFileSystem, class TFile>
-cdbResult uCDBMaker<TFileSystem, TFile>::appendKeyValue(const void *key, unsigned long keyLen, const void *value, unsigned long valueLen) {
-  unsigned long pos;
+cdbResult uCDBMaker<TFileSystem, TFile>::appendKeyValue(
+  const void *key, unsigned long keyLen,
+  const void *value, unsigned long valueLen) {
+  unsigned long pos, dataPos, slots;
   unsigned long hash;
   byte buff[CDB_DESCRIPTOR_SIZE];  
   
   hash = hashFunc(key, keyLen);
 
-  pack(keyLen, buff);
-  pack(valueLen, buff+4);
-
   // Write key, value descriptor
-  pos = cdbData.size();
+  pack(keyLen, buff);
+  pack(valueLen, buff + 4);
+
+  pos = dataPos = cdbData.size();
   if (!writeDescriptor<TFile>(cdbData, buff, pos)) {
     RETURN(state = CDB_ERROR, pos);
   }
 
   // Write key
-  pos = cdbData.size();
-  if (cdbData.write(static_cast<const byte *>(key), (size_t)keyLen) != (size_t)keyLen) {
+  pos += CDB_DESCRIPTOR_SIZE;
+  if (cdbData.write(static_cast<const byte *>(key), (size_t)keyLen)
+      != (size_t)keyLen) {
     RETURN(state = CDB_ERROR, pos);  
   }
 
   // Write value
-  pos = cdbData.size();
-  if (cdbData.write(static_cast<const byte *>(value), (size_t)valueLen) != (size_t)valueLen) {
+  pos += (size_t)keyLen;
+  if (cdbData.write(static_cast<const byte *>(value), (size_t)valueLen)
+      != (size_t)valueLen) {
     RETURN(state = CDB_ERROR, pos);    
   }
+
+  // Increment slots number
+  pos = (hash & 255) << 3;  
+  if (!readDescriptor<TFile>(cdbData, buff, pos)) {
+    RETURN(state = CDB_ERROR, pos);
+  }
+  slots = unpack(buff + 4);
+  slots += 2;
+  pack(slots, buff + 4);
+  if (!writeDescriptor<TFile>(cdbData, buff, pos)) {
+    RETURN(state = CDB_ERROR, pos);
+  }
+
+  // Write hash table slot
+  pack(hash, buff);
+  pack(dataPos, buff + 4);
   
+  pos = cdbHashTab.size();
+  if (!writeDescriptor<TFile>(cdbHashTab, buff, pos)) {
+    RETURN(state = CDB_ERROR, pos);
+  }
+  
+  slotsNum += 2;
   return state = CDB_OK;
 }
 
 template <class TFileSystem, class TFile>
 unsigned long uCDBMaker<TFileSystem, TFile>::recordsNumber() const {
-  return 0;
+  return slotsNum >> 1;
 }
 
 template <class TFileSystem, class TFile>
@@ -681,6 +744,59 @@ cdbResult uCDBMaker<TFileSystem, TFile>::status() const {
 
 template <class TFileSystem, class TFile>
 cdbResult uCDBMaker<TFileSystem, TFile>::finalize() {
+  unsigned long htPos = cdbData.size(), htEnd, htSlotsNum;
+  unsigned long hash, dataPos;
+  byte buff[CDB_DESCRIPTOR_SIZE];  
+  
+  // make space for hash tables
+  for (unsigned long pos = 0; 
+       pos < CDB_HEADER_SIZE;
+       pos += CDB_DESCRIPTOR_SIZE) {
+    if (!readDescriptor<TFile>(cdbData, buff, pos)) {
+      RETURN(state = CDB_ERROR, pos);
+    }
+    
+    pack(htPos, buff);
+    
+    if (!writeDescriptor<TFile>(cdbData, buff, pos)) {
+      RETURN(state = CDB_ERROR, pos);
+    }
+    
+    // write empty hash table
+    pack(0, buff);
+    pack(0, buff + 4);
+    
+    for (unsigned long i = 0;
+         i < htSlotsNum;
+         ++i, htPos += CDB_DESCRIPTOR_SIZE) {
+      if (!writeDescriptor<TFile>(cdbData, buff, htPos)) {
+        RETURN(state = CDB_ERROR, htPos);
+      }
+    }
+    
+  }
+  
+  //pos = 0;
+  // read records descriptors and update hash tables
+  /*
+  for (unsigned long i = 0; i < htSlotsNum >> 1; ++i, pos += CDB_DESCRIPTOR_SIZE) {
+    if (!readDescriptor<TFile>(cdbHashTab, buff, pos)) {
+      RETURN(state = CDB_ERROR, pos);
+    }
+    hash = unpack(buff);
+    dataPos = unpack(buff + 4);
+
+    if (!readDescriptor<TFile>(cdbData, buff, (hash & 255) << 3)) {
+      RETURN(state = CDB_ERROR, (hash & 255) << 3);
+    }
+
+    htPos = unpack(buff);
+    htSlotsNum = unpack(buff + 4);
+    htEnd = htPos + htSlotsNum * CDB_DESCRIPTOR_SIZE;
+    slotsToScan = htSlotsNum;
+    nextSlotPos = htPos + ((hash >> 8) % htSlotsNum) * 8;
+  }
+  */
     
   cdbData.close();
   cdbHashTab.close();
@@ -703,28 +819,6 @@ void pack(unsigned long v, byte *buff) {
   buff[3] = v >> 8;
 }
 
-unsigned long unpack(const byte *buff) {
-  unsigned long v = buff[3];
-
-  v = (v << 8) + buff[2];
-  v = (v << 8) + buff[1];
-  v = (v << 8) + buff[0];
-
-  return v;
-}
-
-template <class TFile>
-bool readDescriptor(TFile& file, byte *buff, unsigned long pos) {
-  if (file.position() != pos) {
-    file.seek(pos);
-    if (file.position() != pos) {
-      return false;
-    }
-  }
-
-  return (file.read(buff, CDB_DESCRIPTOR_SIZE) == CDB_DESCRIPTOR_SIZE);
-}
-
 template <class TFile>
 bool writeDescriptor(TFile& file, byte *buff, unsigned long pos) {
   if (file.position() != pos) {
@@ -734,9 +828,16 @@ bool writeDescriptor(TFile& file, byte *buff, unsigned long pos) {
     }
   }
 
+  return writeDescriptor(file, buff);
+}
+
+template <class TFile>
+bool writeDescriptor(TFile& file, byte *buff) {
   return (file.write(buff, CDB_DESCRIPTOR_SIZE) == CDB_DESCRIPTOR_SIZE);
 }
 //< Private static functions definition
+
+#endif //< USE_UCDB_MAKER
 
 #undef CDB_HEADER_SIZE
 #undef CDB_DESCRIPTOR_SIZE

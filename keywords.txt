@@ -5,19 +5,27 @@
 #######################################
 # Data types (KEYWORD1)
 #######################################
-uCDB	KEYWORD1
+uCDB        KEYWORD1
+uCDBMaker   KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)
 #######################################
-open	            KEYWORD2
-findKey	            KEYWORD2
-findNextValue	    KEYWORD2
-readValue	        KEYWORD2
-recordsNumber       KEYWORD2
-valueAvailable      KEYWORD2
-close           	KEYWORD2
-DJBHash             KEYWORD2
+open            KEYWORD2
+findKey         KEYWORD2
+findNextValue   KEYWORD2
+readValue       KEYWORD2
+valueAvailable  KEYWORD2
+recordsNumber   KEYWORD2
+status          KEYWORD2
+close           KEYWORD2
+DJBHash         KEYWORD2
+
+init            KEYWORD2
+appendKeyValue  KEYWORD2
+recordsNumber   KEYWORD2
+status          KEYWORD2
+finalize        KEYWORD2
 
 #######################################
 # Constants (LITERAL1)

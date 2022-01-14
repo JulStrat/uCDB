@@ -15,6 +15,7 @@
 #include <SD.h>
 
 #define TRACE_CDB
+#define USE_UCDB_MAKER
 #include "uCDB.hpp"
 
 uCDBMaker<SDClass, File> maker(SD);
@@ -68,8 +69,10 @@ void query(const void *key, unsigned long keyLen) {
 void setup() {
   // const char fileName[] = "airports.cdb";
   // const char *air[] = {"SBGL", "00AR", "PG-TFI", "US-0480", "ZYGH"};
-  char *key = "key";
-  char *value = "value";
+  // char *key = "key";
+  // char *value = "value";
+  char key[16];
+  cdbResult rt;
 
   Serial.begin(115200);
   while (!Serial) {
@@ -86,12 +89,23 @@ void setup() {
     }
   }
 
-  maker.init("test");
-  maker.appendKeyValue(key, strlen(key), value, strlen(value));
-  maker.appendKeyValue(key, strlen(key), value, strlen(value));
-  maker.appendKeyValue(key, strlen(key), value, strlen(value));
-  maker.finalize();
-
+  rt = maker.init("test");
+  Serial.println(rt);
+  Serial.print("Records number: "); Serial.println(maker.recordsNumber());  
+  
+  for (unsigned long i = 0; i < 1000; i += 5) {
+    sprintf(key, "%lu", i);
+    rt = maker.appendKeyValue(key, strlen(key), key, strlen(key));
+    if (rt == CDB_ERROR) {
+      Serial.println(i);    
+      Serial.println(rt);    
+      break;
+    }
+  }
+  Serial.print("Records number: "); Serial.println(maker.recordsNumber());
+  
+  rt = maker.finalize();
+  Serial.println(rt);    
 
 /*
   if (ucdb.open(fileName) == CDB_OK) {

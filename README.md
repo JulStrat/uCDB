@@ -3,7 +3,7 @@
 
 # uCDB
 
-Arduino library for querying [Constant DataBase](https://en.wikipedia.org/wiki/Cdb_(software)) (key, value) store.
+Arduino library for querying and creating [Constant DataBase](https://en.wikipedia.org/wiki/Cdb_(software)) (key, value) store.
 Simple, :cyclone: fast and portable CDB file format was developed by D. J. Bernstein.
 
 ## Features
