@@ -575,8 +575,8 @@ class uCDBMaker
     /**
         Append `key' and `value' record
     */
-    cdbResult appendKeyValue(const void *key, unsigned long keyLen,
-                             const void *value, unsigned long valueLen);
+    cdbResult appendKeyValue(const void *key, size_t keyLen,
+                             const void *value, size_t valueLen);
 
     /**
         Total records number in CDB
@@ -600,7 +600,7 @@ class uCDBMaker
 
   private:
     TFileSystem& fs_;
-    char cdbName[13]; // DOS file name
+    String cdbName; // CDB file name without extension
     TFile cdbData, cdbHashTab;
     cdbResult state;
 
@@ -653,19 +653,26 @@ cdbResult uCDBMaker<TFileSystem, TFile>::init(
   const char *fileName,
   unsigned long (*userHashFunc)(const void *key, unsigned long keyLen)) {
   byte buff[CDB_DESCRIPTOR_SIZE];
-  
+
+  cdbName = String(fileName);      
   hashFunc = userHashFunc;
-  cdbData = fs_.open("testdata.111", O_RDWR | O_CREAT | O_TRUNC);
-  cdbHashTab = fs_.open("testhtab.222", O_RDWR | O_CREAT | O_TRUNC);
+  cdbData = fs_.open(cdbName + ".cdb", O_RDWR | O_CREAT | O_TRUNC);
+  if (!cdbData) {
+    RETURN(state = CDB_ERROR, fileName);
+  }
+  cdbHashTab = fs_.open(cdbName + ".###", O_RDWR | O_CREAT | O_TRUNC);
+  if (!cdbHashTab) {
+    RETURN(state = CDB_ERROR, fileName);
+  }
   
-  // Write zero header
   pack(0, buff);
   pack(0, buff + 4);
-  
+  // Write zero header  
   for (unsigned long pos = 0;
        pos < CDB_HEADER_SIZE;
        pos += CDB_DESCRIPTOR_SIZE) {
-    if (!writeDescriptor<TFile>(cdbData, buff, pos)) {
+    // if (!writeDescriptor<TFile>(cdbData, buff, pos)) {
+    if (!writeDescriptor<TFile>(cdbData, buff)) {        
       RETURN(state = CDB_ERROR, pos);
     }
   }
@@ -676,8 +683,8 @@ cdbResult uCDBMaker<TFileSystem, TFile>::init(
 // keyLen, valueLen arg types ?
 template <class TFileSystem, class TFile>
 cdbResult uCDBMaker<TFileSystem, TFile>::appendKeyValue(
-  const void *key, unsigned long keyLen,
-  const void *value, unsigned long valueLen) {
+  const void *key, size_t keyLen,
+  const void *value, size_t valueLen) {
   unsigned long pos, dataPos, slots;
   unsigned long hash;
   byte buff[CDB_DESCRIPTOR_SIZE];  
@@ -695,15 +702,13 @@ cdbResult uCDBMaker<TFileSystem, TFile>::appendKeyValue(
 
   // Write key
   pos += CDB_DESCRIPTOR_SIZE;
-  if (cdbData.write(static_cast<const byte *>(key), (size_t)keyLen)
-      != (size_t)keyLen) {
+  if (cdbData.write(static_cast<const byte *>(key), keyLen) != keyLen) {
     RETURN(state = CDB_ERROR, pos);  
   }
 
   // Write value
   pos += (size_t)keyLen;
-  if (cdbData.write(static_cast<const byte *>(value), (size_t)valueLen)
-      != (size_t)valueLen) {
+  if (cdbData.write(static_cast<const byte *>(value), valueLen) != valueLen) {
     RETURN(state = CDB_ERROR, pos);    
   }
 
@@ -744,11 +749,13 @@ cdbResult uCDBMaker<TFileSystem, TFile>::status() const {
 
 template <class TFileSystem, class TFile>
 cdbResult uCDBMaker<TFileSystem, TFile>::finalize() {
-  unsigned long htPos = cdbData.size(), htEnd, htSlotsNum;
+  unsigned long htPos, htEnd, htSlotsNum, slotsToScan, nextSlotPos, pos;
   unsigned long hash, dataPos;
   byte buff[CDB_DESCRIPTOR_SIZE];  
-  
-  // make space for hash tables
+  byte slot[CDB_DESCRIPTOR_SIZE];    
+
+  htPos = cdbData.size();
+  // update hash table position
   for (unsigned long pos = 0; 
        pos < CDB_HEADER_SIZE;
        pos += CDB_DESCRIPTOR_SIZE) {
@@ -756,35 +763,37 @@ cdbResult uCDBMaker<TFileSystem, TFile>::finalize() {
       RETURN(state = CDB_ERROR, pos);
     }
     
+    htSlotsNum = unpack(buff + 4);
     pack(htPos, buff);
+    htPos += htSlotsNum * CDB_DESCRIPTOR_SIZE;
     
     if (!writeDescriptor<TFile>(cdbData, buff, pos)) {
       RETURN(state = CDB_ERROR, pos);
     }
-    
-    // write empty hash table
-    pack(0, buff);
-    pack(0, buff + 4);
-    
-    for (unsigned long i = 0;
-         i < htSlotsNum;
-         ++i, htPos += CDB_DESCRIPTOR_SIZE) {
-      if (!writeDescriptor<TFile>(cdbData, buff, htPos)) {
-        RETURN(state = CDB_ERROR, htPos);
-      }
-    }
-    
   }
   
-  //pos = 0;
+  // make space for hash tables
+  htPos = cdbData.size();
+  pack(0, buff);
+  pack(0, buff + 4);
+  
+  for (unsigned long i = 0; 
+       i < slotsNum;
+       ++i, htPos += CDB_DESCRIPTOR_SIZE) {
+    //if (!writeDescriptor<TFile>(cdbData, buff, htPos)) {
+    if (!writeDescriptor<TFile>(cdbData, buff, htPos)) {        
+      RETURN(state = CDB_ERROR, htPos);
+    }
+  }
+  
+  pos = 0;
   // read records descriptors and update hash tables
-  /*
-  for (unsigned long i = 0; i < htSlotsNum >> 1; ++i, pos += CDB_DESCRIPTOR_SIZE) {
-    if (!readDescriptor<TFile>(cdbHashTab, buff, pos)) {
+  for (unsigned long i = 0; i < slotsNum >> 1; ++i, pos += CDB_DESCRIPTOR_SIZE) {
+    if (!readDescriptor<TFile>(cdbHashTab, slot, pos)) {
       RETURN(state = CDB_ERROR, pos);
     }
-    hash = unpack(buff);
-    dataPos = unpack(buff + 4);
+    hash = unpack(slot);
+    dataPos = unpack(slot + 4);
 
     if (!readDescriptor<TFile>(cdbData, buff, (hash & 255) << 3)) {
       RETURN(state = CDB_ERROR, (hash & 255) << 3);
@@ -792,14 +801,35 @@ cdbResult uCDBMaker<TFileSystem, TFile>::finalize() {
 
     htPos = unpack(buff);
     htSlotsNum = unpack(buff + 4);
+    
     htEnd = htPos + htSlotsNum * CDB_DESCRIPTOR_SIZE;
     slotsToScan = htSlotsNum;
     nextSlotPos = htPos + ((hash >> 8) % htSlotsNum) * 8;
+    
+    while (slotsToScan) {
+      // probe slot
+      if (!readDescriptor<TFile>(cdbData, buff, nextSlotPos)) {
+        RETURN(state = CDB_ERROR, nextSlotPos);
+      }
+
+      if (!unpack(buff + 4)) {
+        // write slot 
+        if (!writeDescriptor<TFile>(cdbData, slot, nextSlotPos)) {
+          RETURN(state = CDB_ERROR, nextSlotPos);
+        }
+        break;
+      }
+      --slotsToScan;
+      nextSlotPos += CDB_DESCRIPTOR_SIZE;
+      if (nextSlotPos == htEnd) {
+          nextSlotPos = htPos;
+      }
+    }
   }
-  */
     
   cdbData.close();
   cdbHashTab.close();
+  fs_.remove(cdbName + ".###");
   
   return state = CDB_CLOSED;
 }
@@ -835,6 +865,7 @@ template <class TFile>
 bool writeDescriptor(TFile& file, byte *buff) {
   return (file.write(buff, CDB_DESCRIPTOR_SIZE) == CDB_DESCRIPTOR_SIZE);
 }
+
 //< Private static functions definition
 
 #endif //< USE_UCDB_MAKER
