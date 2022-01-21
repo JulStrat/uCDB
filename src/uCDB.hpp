@@ -48,6 +48,10 @@
 
 */
 
+#define UCDB_VERSION_MAJOR 0
+#define UCDB_VERSION_MINOR 5
+#define UCDB_VERSION_PATCH 3
+
 #ifdef TRACE_CDB
 #ifndef TracePrinter
 #define TracePrinter Serial
@@ -144,6 +148,7 @@ class uCDB
     unsigned long dataEndPos; ///< Data end position
     unsigned long slotsNum;   ///< Total slots number in CDB.
 
+    unsigned int hashTabID_; ///< Last accessed hash table
     /// @name Hash table descriptor (HEADER section)
     /// @{
     unsigned long hashTabStartPos; ///< Hash table position
@@ -201,6 +206,7 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
   // Close previously opened CDB file
   // State - CDB_CLOSED
   close();
+  hashTabID_ = -1;
 
   if (!fs_.exists(fileName)) {
     return CDB_NOT_FOUND;
@@ -263,6 +269,7 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
 template <class TFileSystem, class TFile>
 cdbResult uCDB<TFileSystem, TFile>::findKey(const void *key, unsigned long keyLen) {
   byte buff[CDB_DESCRIPTOR_SIZE];
+  unsigned int hashTabID;
 
   zero();
   // Check CDB state
@@ -274,17 +281,21 @@ cdbResult uCDB<TFileSystem, TFile>::findKey(const void *key, unsigned long keyLe
       ;
   }
 
-  keyHash = hashFunc(key, keyLen);
   key_ = static_cast<const byte *>(key);
   keyLen_ = keyLen;
+  keyHash = hashFunc(key, keyLen);
+  hashTabID = keyHash & 255;
+  
+  if (hashTabID != hashTabID_) {
+    if (!readDescriptor<TFile>(cdb, buff, hashTabID << 3)) {
+      RETURN(state = FILE_ERROR, FILE_ERROR);
+    }
 
-  if (!readDescriptor<TFile>(cdb, buff, (keyHash & 255) << 3)) {
-    RETURN(state = FILE_ERROR, FILE_ERROR);
+    hashTabStartPos = unpack(buff);
+    hashTabSlotsNum = unpack(buff + 4);
+    hashTabEndPos = hashTabStartPos + hashTabSlotsNum * CDB_DESCRIPTOR_SIZE;
+    hashTabID_ = hashTabID; 
   }
-
-  hashTabStartPos = unpack(buff);
-  hashTabSlotsNum = unpack(buff + 4);
-  hashTabEndPos = hashTabStartPos + hashTabSlotsNum * CDB_DESCRIPTOR_SIZE;
   slotsToScan = hashTabSlotsNum;
   nextSlotPos = hashTabStartPos + ((keyHash >> 8) % hashTabSlotsNum) * 8;
 
