@@ -15,12 +15,13 @@
 #define TRACE_CDB
 #include "uCDB.hpp"
 
-#define RAND_NAME "___XX___.$$$"
+#define RAND_NAME "___45___.$$$"
 
 SdFat fat;
 
 bool gen_random(unsigned long sz) {
   long v, p = 8 * sz - 2056;
+  
   File rf = fat.open(RAND_NAME, O_CREAT | O_WRITE | O_TRUNC);
 
   if (!rf) {
@@ -136,7 +137,9 @@ bool random_test1() {
   uCDB<SdFat, File> ucdb(fat);
   byte buff[64];
 
-  gen_random(10);
+  if (!gen_random(10)) {
+    return false;    
+  }
 
   if (ucdb.open(RAND_NAME) != CDB_ERROR) {
     ucdb.close();
@@ -168,7 +171,9 @@ bool random_test2() {
   uCDB<SdFat, File> ucdb(fat);
   byte buff[64];
 
-  gen_random(512);
+  if (!gen_random(512)) {
+    return false;    
+  }
 
   if (ucdb.open(RAND_NAME) != CDB_ERROR) {
     ucdb.close();
@@ -199,7 +204,9 @@ bool random_test3() {
   uCDB<SdFat, File> ucdb(fat);
   byte buff[64];
 
-  gen_random(1024*4);
+  if (!gen_random(1024*4)) {
+    return false;    
+  }
 
   if (ucdb.open(RAND_NAME) != CDB_ERROR) {
     ucdb.close();
@@ -230,7 +237,9 @@ bool random_test4() {
   uCDB<SdFat, File> ucdb(fat);
   byte buff[64];
 
-  gen_random(1024*8);
+  if (!gen_random(1024*8)) {
+    return false;    
+  }
 
   if (ucdb.open(RAND_NAME) != CDB_ERROR) {
     ucdb.close();
@@ -257,6 +266,40 @@ bool random_test4() {
   return true;
 }
 
+bool random_test5() {
+  uCDB<SdFat, File> ucdb(fat);
+  byte buff[64];
+
+  if (!gen_random(7)) {
+    return false;    
+  }
+
+  if (ucdb.open(RAND_NAME) != CDB_ERROR) {
+    ucdb.close();
+    return false;
+  }
+
+  if (ucdb.findKey("ZYGH", 3) != CDB_ERROR)
+    return false;
+  if (ucdb.findNextValue() != CDB_ERROR)
+    return false;
+  if (ucdb.findKey("AAAA", 3) != CDB_ERROR)
+    return false;
+  if (ucdb.findNextValue() != CDB_ERROR)
+    return false;
+
+  if (ucdb.recordsNumber() != 0)
+    return false;
+  if (ucdb.readValue(buff, 64) != -1)
+    return false;
+  if (ucdb.readValue() != -1)
+    return false;
+  if (ucdb.valueAvailable() != 0)
+    return false;
+
+  return true;
+}
+
 void loop() {
   char str[16];
   long key;
@@ -276,6 +319,7 @@ void loop() {
   Serial.println(random_test2());
   Serial.println(random_test3());
   Serial.println(random_test4());
+  Serial.println(random_test5());  
 
   while (Serial.available()) {
     Serial.read();
