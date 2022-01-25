@@ -18,4 +18,4 @@ jobs:
           sketch-paths: |
             - ./examples
           libraries: |
-            - SdFat
+            - name: SdFat
