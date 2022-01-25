@@ -1,4 +1,5 @@
 [![arduino-lint](https://github.com/JulStrat/uCDB/actions/workflows/arduino-lint.yml/badge.svg)](https://github.com/JulStrat/uCDB/actions/workflows/arduino-lint.yml)
+[![Compile examples](https://github.com/JulStrat/uCDB/actions/workflows/compile-examples.yml/badge.svg)](https://github.com/JulStrat/uCDB/actions/workflows/compile-examples.yml)
 [![GitHub license](https://img.shields.io/github/license/JulStrat/uCDB)](https://github.com/JulStrat/uCDB/blob/master/LICENSE.md)
 
 # uCDB
