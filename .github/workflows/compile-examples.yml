@@ -1,0 +1,21 @@
+name: Compile examples
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  compile-sketch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repos
+        uses: actions/checkout@v2
+
+      - name: Compile examples
+        uses: arduino/compile-sketches@v1
+        with:
+          sketch-paths: |
+            - ./examples
+          libraries: |
+            - SdFat
