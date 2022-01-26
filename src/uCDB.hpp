@@ -50,7 +50,7 @@
 
 #define UCDB_VERSION_MAJOR 0
 #define UCDB_VERSION_MINOR 5
-#define UCDB_VERSION_PATCH 3
+#define UCDB_VERSION_PATCH 4
 
 #ifdef TRACE_CDB
 #ifndef TracePrinter
@@ -85,7 +85,15 @@ template <class TFileSystem, class TFile>
 class uCDB
 {
   public:
-    uCDB(TFileSystem& fs);
+
+    /**
+        uCDB constructor
+    */
+    uCDB(TFileSystem& fs) :
+      fs_(fs),
+      slotsToScan_(0),
+      nextSlotPos_(0),
+      state_(CDB_CLOSED) {}
 
     /**
         Open CDB file
@@ -119,12 +127,22 @@ class uCDB
     /**
         Total records number in CDB
     */
-    unsigned long recordsNumber() const;
+    unsigned long recordsNumber() const {
+      switch (state_) {
+        case CDB_CLOSED:
+        case CDB_ERROR:
+          return 0;
+        default:
+          return (slotsNum_ >> 1);
+      }
+    }
 
     /**
         The number of `value' bytes available for reading
     */
-    unsigned long valueAvailable() const;
+    unsigned long valueAvailable() const {
+      return (state_ == KEY_FOUND ? valueBytesAvail_ : 0);
+    }
 
     /**
         Close CDB
@@ -184,12 +202,6 @@ static unsigned long unpack(const byte *buff);
 
 template <class TFile>
 static bool readDescriptor(TFile& file, byte *buff, unsigned long pos);
-
-template <class TFileSystem, class TFile>
-uCDB<TFileSystem, TFile>::uCDB(TFileSystem& fs) : fs_(fs) {
-  zero();
-  state_ = CDB_CLOSED;
-}
 
 template <class TFileSystem, class TFile>
 cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*userHashFunc)(const void *key, unsigned long keyLen)) {
@@ -403,23 +415,6 @@ int uCDB<TFileSystem, TFile>::readValue(void *buff, unsigned int byteNum) {
   }
 
   return -1;
-}
-
-template <class TFileSystem, class TFile>
-unsigned long uCDB<TFileSystem, TFile>::recordsNumber() const {
-  // Check CDB state
-  switch (state_) {
-    case CDB_CLOSED:
-    case CDB_ERROR:
-      return 0;
-    default:
-      return (slotsNum_ >> 1);
-  }
-}
-
-template <class TFileSystem, class TFile>
-unsigned long uCDB<TFileSystem, TFile>::valueAvailable() const {
-  return ((state_ == KEY_FOUND) ? valueBytesAvail_ : 0);
 }
 
 template <class TFileSystem, class TFile>
