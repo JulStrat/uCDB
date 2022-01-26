@@ -91,9 +91,9 @@ class uCDB
     */
     uCDB(TFileSystem& fs) :
       fs_(fs),
+      state_(CDB_CLOSED),
       slotsToScan_(0),
-      nextSlotPos_(0),
-      state_(CDB_CLOSED) {}
+      nextSlotPos_(0) {}
 
     /**
         Open CDB file
