@@ -15,6 +15,8 @@ jobs:
       - name: Compile examples
         uses: arduino/compile-sketches@v1
         with:
+          enable-deltas-report: true
+          enable-warnings-report: true
           sketch-paths: |
             - ./examples
           libraries: |
