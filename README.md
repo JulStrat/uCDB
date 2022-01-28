@@ -44,6 +44,8 @@ unsigned long recordsNumber() const;
 
 unsigned long valueAvailable() const;
 
+cdbResult state() const;
+
 cdbResult close();
 ```
 

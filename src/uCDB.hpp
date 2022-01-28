@@ -154,12 +154,18 @@ class uCDB
     /**
         Close CDB
     */
-    cdbResult close();
+    cdbResult close() {
+      if (cdb_) {
+        cdb_.close();
+      }
+      
+      return (state_ = CDB_CLOSED);
+    }
 
     /**
         uCDB destructor
     */
-    ~uCDB();
+    ~uCDB() { close(); }
 
   private:
     TFileSystem& fs_;
@@ -198,7 +204,6 @@ class uCDB
 
     cdbResult compareKey();
     unsigned long (*hashFunc)(const void *key, unsigned long keyLen);
-    void zero();
 };
 
 #define CDB_DESCRIPTOR_SIZE 2 * (sizeof (unsigned long))
@@ -223,6 +228,9 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
   // Close previously opened CDB file
   // State - CDB_CLOSED
   close();
+
+  slotsToScan_ = 0;
+  nextSlotPos_ = 0;
   hashTabID_ = -1;
 
   if (!fs_.exists(fileName)) {
@@ -286,7 +294,9 @@ cdbResult uCDB<TFileSystem, TFile>::findKey(const void *key, unsigned long keyLe
   byte buff[CDB_DESCRIPTOR_SIZE];
   unsigned int hashTabID;
 
-  zero();
+  slotsToScan_ = 0;
+  nextSlotPos_ = 0;
+
   // Check CDB state
   switch (state_) {
     case CDB_CLOSED:
@@ -347,7 +357,8 @@ cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
     dataPos_ = unpack(buff + 4);
 
     if (!dataPos_) {
-      break;  
+      // Empty slot - KEY_NOT_FOUND  
+      break;
     }
 
     // Check data position
@@ -388,7 +399,8 @@ cdbResult uCDB<TFileSystem, TFile>::findNextValue() {
     }
   }
 
-  zero();
+  slotsToScan_ = 0;
+  nextSlotPos_ = 0;
 
   return (state_ = KEY_NOT_FOUND);
 }
@@ -422,20 +434,6 @@ int uCDB<TFileSystem, TFile>::readValue(void *buff, unsigned int byteNum) {
   return -1;
 }
 
-template <class TFileSystem, class TFile>
-cdbResult uCDB<TFileSystem, TFile>::close() {
-  zero();
-  if (cdb_) {
-    cdb_.close();
-  }
-  return (state_ = CDB_CLOSED);
-}
-
-template <class TFileSystem, class TFile>
-uCDB<TFileSystem, TFile>::~uCDB() {
-  close();
-}
-
 // Private functions
 template <class TFileSystem, class TFile>
 cdbResult uCDB<TFileSystem, TFile>::compareKey() {
@@ -465,12 +463,6 @@ cdbResult uCDB<TFileSystem, TFile>::compareKey() {
   }
 
   return KEY_FOUND;
-}
-
-template <class TFileSystem, class TFile>
-void uCDB<TFileSystem, TFile>::zero() {
-  slotsToScan_ = 0;
-  nextSlotPos_ = 0;
 }
 
 #define DJB_START_HASH 5381UL
