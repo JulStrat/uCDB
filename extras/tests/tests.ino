@@ -133,6 +133,86 @@ bool closed_test3() {
   return true;
 }
 
+int read_value_without_find_test() {
+  uCDB<SdFat, File> ucdb(fat);
+  byte buff[64];
+
+  if (ucdb.open("airports.cdb" ) != CDB_OK) {
+    ucdb.close();
+    return -1;
+  }
+
+  if (ucdb.state() != CDB_OK)
+    return -100;
+
+  if (ucdb.valueAvailable() != 0)
+    return -2;
+  if (ucdb.readValue() != -1)
+    return -3;
+  if (ucdb.readValue(buff, 1) != -1)
+    return -4;
+
+  return 1;
+}
+
+int read_value_find_fail_test() {
+  uCDB<SdFat, File> ucdb(fat);
+  byte buff[64];
+
+  if (ucdb.open("airports.cdb" ) != CDB_OK) {
+    ucdb.close();
+    return -1;
+  }
+
+  if (ucdb.state() != CDB_OK)
+    return -100;
+
+  if (ucdb.findKey("AAAAAAAA", 8) != KEY_NOT_FOUND)
+    return -2;
+
+  if (ucdb.valueAvailable() != 0)
+    return -3;
+  if (ucdb.readValue() != -1)
+    return -4;
+  if (ucdb.readValue(buff, 1) != -1)
+    return -5;
+
+  return 1;
+}
+
+int read_value_find_ok_test() {
+  uCDB<SdFat, File> ucdb(fat);
+  byte buff[64];
+
+  if (ucdb.open("airports.cdb" ) != CDB_OK) {
+    ucdb.close();
+    return -1;
+  }
+
+  if (ucdb.state() != CDB_OK)
+    return -100;
+
+  if (ucdb.findKey("ZYGH", 4) != KEY_FOUND)
+    return -2;
+
+  if (ucdb.valueAvailable() <= 0)
+    return -3;
+  
+  while (ucdb.readValue() >= 0);
+
+  if (ucdb.valueAvailable() != 0)
+    return -4;
+  
+  if (ucdb.readValue() != -1)
+    return -5;
+  if (ucdb.readValue(buff, 1) != 0)
+    return -6;
+  if (ucdb.valueAvailable() != 0)
+    return -7;
+
+  return 1;
+}
+
 bool random_test1() {
   uCDB<SdFat, File> ucdb(fat);
   byte buff[64];
@@ -315,6 +395,16 @@ void loop() {
   Serial.println(closed_test1());
   Serial.println(closed_test2());
   Serial.println(closed_test3());
+  
+  Serial.println("read_value_without_find_test");
+  Serial.println(read_value_without_find_test());
+  
+  Serial.println("read_value_find_fail_test");
+  Serial.println(read_value_find_fail_test());
+
+  Serial.println("read_value_find_ok_test");
+  Serial.println(read_value_find_ok_test());
+  
   Serial.println(random_test1());
   Serial.println(random_test2());
   Serial.println(random_test3());

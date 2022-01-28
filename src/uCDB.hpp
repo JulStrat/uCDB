@@ -50,7 +50,7 @@
 
 #define UCDB_VERSION_MAJOR 0
 #define UCDB_VERSION_MINOR 5
-#define UCDB_VERSION_PATCH 4
+#define UCDB_VERSION_PATCH 5
 
 #ifdef TRACE_CDB
 #ifndef TracePrinter
@@ -145,6 +145,13 @@ class uCDB
     }
 
     /**
+        The UCDB state
+    */
+    cdbResult state() const {
+      return state_;
+    }
+
+    /**
         Close CDB
     */
     cdbResult close();
@@ -164,7 +171,7 @@ class uCDB
     unsigned long keyHash_;
 
     unsigned long dataEndPos_; ///< Data end position
-    unsigned long slotsNum_;   ///< Total slots number in CDB.
+    unsigned long slotsNum_;   ///< Total slots number in CDB
 
     unsigned int hashTabID_; ///< Last accessed hash table
     /// @name Hash table descriptor (HEADER section)
@@ -245,9 +252,6 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
     htPos = unpack(buff);
     htSlotsNum = unpack(buff + 4);
 
-    if (!htPos) {
-      continue; // Empty hash table
-    }
     if ((htPos < CDB_HEADER_SIZE) || (htPos > cdb_.size())) {
       RETURN(state_ = CDB_ERROR, htPos); // Critical CDB format or data integrity error
     }
@@ -273,6 +277,7 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
   dataEndPos_ = dend;
   slotsNum_ = snum;
   hashFunc = userHashFunc;
+
   return (state_ = CDB_OK);
 }
 
