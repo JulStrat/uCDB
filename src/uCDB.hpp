@@ -106,7 +106,8 @@ enum cdbResult {
   CDB_ERROR,        ///< CDB data integrity critical error
   FILE_ERROR,       ///< File operation (open/seek/read) error
   KEY_FOUND,
-  KEY_NOT_FOUND
+  KEY_NOT_FOUND,
+  CDB_OVERFLOW
 };
 
 unsigned long DJBHash(const void *key, unsigned long keyLen);
@@ -613,6 +614,7 @@ class uCDBMaker
 
     //unsigned long dataEndPos; ///< Data end position
     unsigned long slotsNum_;   ///< Total slots number in CDB.
+    unsigned long cdbSize_;    ///< CDB file size
 
     /// @name Hash table descriptor (HEADER section)
     /// @{
@@ -679,6 +681,7 @@ cdbResult uCDBMaker<TFileSystem, TFile>::init(
       RETURN(state_ = CDB_ERROR, pos);
     }
   }
+  cdbSize_ = CDB_HEADER_SIZE;
   slotsNum_ = 0;
   return state_ = CDB_OK;
 }
@@ -688,12 +691,33 @@ template <class TFileSystem, class TFile>
 cdbResult uCDBMaker<TFileSystem, TFile>::appendKeyValue(
   const void *key, size_t keyLen,
   const void *value, size_t valueLen) {
-  unsigned long pos, dataPos, slots;
+  unsigned long pos, dataPos, slots, cdbSize;
   unsigned long hash;
-  byte buff[CDB_DESCRIPTOR_SIZE];  
-  
-  hash = hashFunc(key, keyLen);
+  byte buff[CDB_DESCRIPTOR_SIZE];
 
+  // Check CDB file size
+  cdbSize = cdbSize_;
+  if (keyLen > (MAX_CDB_SIZE - cdbSize)) {
+    RETURN(CDB_OVERFLOW, keyLen)  
+  }
+  else {
+    cdbSize += keyLen;  
+  }
+  if (valueLen > (MAX_CDB_SIZE - cdbSize)) {
+    RETURN(CDB_OVERFLOW, valueLen)  
+  }
+  else {
+    cdbSize += valueLen;
+  }
+  if ((3 * CDB_DESCRIPTOR_SIZE) > (MAX_CDB_SIZE - cdbSize)) {
+    RETURN(CDB_OVERFLOW, 3 * CDB_DESCRIPTOR_SIZE);    
+  }
+  else {
+    cdbSize += 3 * CDB_DESCRIPTOR_SIZE;
+  }
+  cdbSize_ = cdbSize;
+
+  hash = hashFunc(key, keyLen);
   // Write key, value descriptor
   pack(keyLen, buff);
   pack(valueLen, buff + 4);
