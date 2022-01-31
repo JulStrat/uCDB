@@ -9,17 +9,21 @@ Simple, :cyclone: fast and portable CDB file format was developed by D. J. Berns
 
 ## Features
 
-> **Fast lookups**: A successful lookup in a large database normally takes just two disk accesses. An unsuccessful lookup takes only one.
+> **Fast lookups**: A successful lookup in a large database normally takes just two disk accesses.
+ An unsuccessful lookup takes only one.
 >
 > **Low overhead**: A database uses 2048 bytes, plus 24 bytes per record, plus the space for keys and data.
 >
-> **No random limits**: cdb can handle any database up to 4 gigabytes. There are no other restrictions; records don't even have to fit into memory. Databases are stored in a machine-independent format.
+> **No random limits**: cdb can handle any database up to 4 gigabytes.
+ There are no other restrictions; records don't even have to fit into memory.
+ Databases are stored in a machine-independent format.
 
 Compatible storage libraries:
 - official [Arduino SD](https://github.com/arduino-libraries/SD)
 - [Greiman SdFat](https://github.com/greiman/SdFat)
 - [SdFat - Adafruit fork](https://github.com/adafruit/SdFat)
-- [Adafruit SPIFlash](https://github.com/adafruit/Adafruit_SPIFlash), real usage :airplane:[SoftRF](https://github.com/lyusupov/SoftRF/blob/master/software/firmware/source/SoftRF/src/platform/nRF52.cpp).
+- [Adafruit SPIFlash](https://github.com/adafruit/Adafruit_SPIFlash),
+ real `uCDB` usage :airplane:[SoftRF](https://github.com/lyusupov/SoftRF/blob/master/software/firmware/source/SoftRF/src/platform/nRF52.cpp).
 
 Simple tracing for CDB format/integrity and run time file operation errors.
 ```C++
@@ -55,7 +59,8 @@ cdbResult close();
 
 ## Usage examples
 
-`examples` folder contains `airports.ino` Arduino IDE sketch, Python converter `airports.py` script and data files.
+`examples` folder contains `airports.ino` Arduino IDE sketch,
+ Python converter `airports.py` script and data files.
 
 <img src="https://github.com/JulStrat/uCDB/blob/master/examples/airports/airports.png">
 

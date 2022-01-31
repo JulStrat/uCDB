@@ -213,6 +213,40 @@ int read_value_find_ok_test() {
   return 1;
 }
 
+int read_value_reopen_after_find_test() {
+  uCDB<SdFat, File> ucdb(fat);
+  byte buff[64];
+
+  if (ucdb.open("airports.cdb" ) != CDB_OK) {
+    ucdb.close();
+    return -1;
+  }
+
+  if (ucdb.state() != CDB_OK)
+    return -100;
+
+  if (ucdb.findKey("SSS", 3) != KEY_FOUND)
+    return -2;
+
+  if (ucdb.open("airports.cdb" ) != CDB_OK) {
+    ucdb.close();
+    return -101;
+  }
+
+  if (ucdb.state() != CDB_OK)
+    return -102;
+
+  if (ucdb.valueAvailable() != 0)
+    return -3;
+  
+  if (ucdb.readValue() != -1)
+    return -4;
+  if (ucdb.readValue(buff, 1) != -1)
+    return -5;
+
+  return 1;
+}
+
 bool random_test1() {
   uCDB<SdFat, File> ucdb(fat);
   byte buff[64];
@@ -404,6 +438,9 @@ void loop() {
 
   Serial.println("read_value_find_ok_test");
   Serial.println(read_value_find_ok_test());
+
+  Serial.println("read_value_reopen_after_find_test");
+  Serial.println(read_value_reopen_after_find_test());  
   
   Serial.println(random_test1());
   Serial.println(random_test2());
