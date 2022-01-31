@@ -20,9 +20,9 @@
 #define USE_UCDB_MAKER
 #include "uCDB.hpp"
 
-SdFat32 fat;
-uCDBMaker<SdFat32, File32> maker(fat);
-uCDB<SdFat32, File32> ucdb(fat);
+SdFat fat;
+uCDBMaker<SdFat, File> maker(fat);
+uCDB<SdFat, File> ucdb(fat);
 
 unsigned long startMillis;
 
@@ -80,7 +80,7 @@ void setup() {
     return;
   }
   
-  Serial.println("Creating CDB file - testCDB...\nRange [0, 100000), step - 5.\nPlease wait!");
+  Serial.println("Creating CDB file - testCDB...\nRange [0, 10000), step - 5.\nPlease wait!");
   rt = maker.init("testCDB");
   
   if (rt == CDB_ERROR) {
@@ -89,7 +89,7 @@ void setup() {
   }
   
   startMillis = millis();
-  for (unsigned long i = 0; i < 100000; i += 5) {
+  for (unsigned long i = 0; i < 10000; i += 5) {
     sprintf(key, "%lu", i);
     rt = maker.appendKeyValue(key, strlen(key), key, strlen(key));
     if (rt == CDB_ERROR) {
