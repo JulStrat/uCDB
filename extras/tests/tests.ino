@@ -15,16 +15,17 @@
 #define TRACE_CDB
 #include "uCDB.hpp"
 
-#define RAND_NAME "___45___.$$$"
+#define RAND_NAME "12345678.000"
 
 SdFat fat;
 
 bool gen_random(unsigned long sz) {
   long v, p = 8 * sz - 2056;
   
-  File rf = fat.open(RAND_NAME, O_CREAT | O_WRITE | O_TRUNC);
+  File rf = fat.open(RAND_NAME, O_CREAT | O_RDWR | O_TRUNC);
 
   if (!rf) {
+    Serial.print("Can't create file: "); Serial.println(RAND_NAME);  
     return false;
   }
   randomSeed(random(0x7FFFFFFF));

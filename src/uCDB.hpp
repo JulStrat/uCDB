@@ -216,12 +216,15 @@ template <class TFile>
 static bool readDescriptor(TFile& file, byte *buff, unsigned long pos);
 
 template <class TFileSystem, class TFile>
-cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*userHashFunc)(const void *key, unsigned long keyLen)) {
+cdbResult uCDB<TFileSystem, TFile>::open(
+  const char *fileName, 
+  unsigned long (*userHashFunc)(const void *key, unsigned long keyLen)) {
+      
   unsigned long htPos;
   unsigned long htSlotsNum;
 
   unsigned long dend;
-  unsigned long snum;
+  unsigned long snum = 0;
 
   byte buff[CDB_DESCRIPTOR_SIZE];
 
@@ -246,13 +249,28 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
 
   // CDB file size must be at least HEADER_SIZE bytes
   if (cdb_.size() < CDB_HEADER_SIZE) {
-    RETURN(state_ = CDB_ERROR, CDB_ERROR);
+    RETURN(state_ = CDB_ERROR, cdb_.size());
   }
 
-  dend = cdb_.size();
-  snum = 0;
+  if (!readDescriptor<TFile>(cdb_, buff, 0)) {
+    RETURN(state_ = CDB_ERROR, 0); // File read error is critical here.
+  }
 
-  for (unsigned long pos = 0; pos < CDB_HEADER_SIZE; pos += CDB_DESCRIPTOR_SIZE) {
+  htPos = unpack(buff);
+  htSlotsNum = unpack(buff + 4);
+
+  if ((htPos < CDB_HEADER_SIZE) || (htPos > cdb_.size())) {
+    RETURN(state_ = CDB_ERROR, htPos); // Invalid hash table position
+  }
+  if (((cdb_.size() - htPos) >> 3) < htSlotsNum) {
+    RETURN(state_ = CDB_ERROR, htSlotsNum); // Invalid hash table slots number
+  }
+
+  // First hash table begins exactly after data section.
+  dend = htPos;
+  snum += htSlotsNum;
+
+  for (unsigned long pos = CDB_DESCRIPTOR_SIZE; pos < CDB_HEADER_SIZE; pos += CDB_DESCRIPTOR_SIZE) {
     if (!readDescriptor<TFile>(cdb_, buff, pos)) {
       RETURN(state_ = CDB_ERROR, pos); // File read error is critical here.
     }
@@ -260,25 +278,18 @@ cdbResult uCDB<TFileSystem, TFile>::open(const char *fileName, unsigned long (*u
     htPos = unpack(buff);
     htSlotsNum = unpack(buff + 4);
 
-    if ((htPos < CDB_HEADER_SIZE) || (htPos > cdb_.size())) {
-      RETURN(state_ = CDB_ERROR, htPos); // Critical CDB format or data integrity error
+    if (htPos != dend + snum * CDB_DESCRIPTOR_SIZE) {
+      RETURN(state_ = CDB_ERROR, htPos); // Invalid hash table position
     }
+
     if (((cdb_.size() - htPos) >> 3) < htSlotsNum) {
-      RETURN(state_ = CDB_ERROR, htSlotsNum); // Critical CDB format or data integrity error
+      RETURN(state_ = CDB_ERROR, htSlotsNum); // Invalid hash table slots number
     }
 
-    // Adjust data end position and total slots number
-    if (htPos < dend) {
-      dend = htPos;
-    }
     snum += htSlotsNum;
-
-    if (((cdb_.size() - dend) >> 3) < snum) {
-      RETURN(state_ = CDB_ERROR, snum); // Critical CDB format or data integrity error
-    }
   }
   // Check total
-  if ((cdb_.size() - dend) != 8 * snum){
+  if ((cdb_.size() - dend) != 8 * snum) {
     RETURN(state_ = CDB_ERROR, 8 * snum); // Critical CDB format or data integrity error
   }
 
